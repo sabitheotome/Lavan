@@ -1,11 +1,11 @@
 [package]
 name = "lavan"
 version = "0.0.3-EXPERIMENTAL-SUBJECT-TO-BREAKING-CHANGES"
-authors = ["Sabi <sabivtuber@proton.me>"]
+authors = ["Sabi <sabitheotome@gmail.com>"]
 description = "Lavan is a parser library"
 license = "GPL-3.0"
 license-file = "LICENSE"
-repository = "https://github.com/sabivtuber/lavan"
+repository = "https://github.com/sabitheotome/lavan"
 edition = "2021"
 
 [dependencies]
