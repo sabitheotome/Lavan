@@ -10,7 +10,7 @@
 [docs-badge]: https://docs.rs/lavan/badge.svg
 [docs-url]: https://docs.rs/lavan
 [license-badge]: https://img.shields.io/crates/l/lavan.svg
-[license-url]: https://github.com/sabitheotome/lavan/tokio/blob/master/LICENSE
+[license-url]: https://github.com/sabitheotome/lavan/blob/master/LICENSE
 [actions-badge]: https://github.com/sabitheotome/lavan/workflows/CI/badge.svg
 [actions-url]: https://github.com/sabitheotome/lavan/actions
 
