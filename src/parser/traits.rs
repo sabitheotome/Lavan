@@ -1,15 +1,15 @@
 use super::adapters::{
-    core::and::And,
-    core::as_ref::AsRef,
-    core::filter::Filter,
-    core::ignore::Ignore,
-    core::map::Map,
-    core::map_err::MapErr,
-    core::non_terminal::NonTerminal,
-    core::opt::Opt,
-    core::or::Or,
-    core::repeat::{mode::*, *},
-    core::try_map::TryMap,
+    and::And,
+    as_ref::AsRef,
+    filter::{Filter, FilterNot},
+    ignore::Ignore,
+    map::Map,
+    map_err::MapErr,
+    non_terminal::NonTerminal,
+    opt::Opt,
+    or::Or,
+    repeat::{mode::*, *},
+    try_map::TryMap,
 };
 use super::util::assoc::{err, val};
 use crate::response::prelude::*;
@@ -47,7 +47,7 @@ pub trait Parser {
     fn try_map<Fun, Val>(&self, f: Fun) -> TryMap<AsRef<Self>, Fun, Val>
     where
         Self: Sized,
-        Self::Output: Pseudodata + Exceptional,
+        Self::Output: ValueFunctor + Fallible,
         Fun: Fn(val![Self]) -> val![Self<Val>],
     {
         TryMap::new(self.as_ref(), f)
@@ -80,10 +80,19 @@ pub trait Parser {
     fn filter<Fun>(&self, function: Fun) -> Filter<AsRef<Self>, Fun>
     where
         Self: Sized,
-        Self::Output: Triable,
-        Fun: Fn(&<Self::Output as Pseudotriable>::Output) -> bool,
+        Self::Output: ValueFunctor,
+        Fun: Fn(&<Self::Output as Response>::Value) -> bool,
     {
         Filter::new(self.as_ref(), function)
+    }
+
+    fn filter_not<Fun>(&self, function: Fun) -> FilterNot<AsRef<Self>, Fun>
+    where
+        Self: Sized,
+        Self::Output: ValueFunctor,
+        Fun: Fn(&<Self::Output as Response>::Value) -> bool,
+    {
+        self.filter(function).not()
     }
 
     fn and<Par>(&self, parser: Par) -> And<AsRef<Self>, Par>
@@ -107,7 +116,7 @@ pub trait Parser {
     fn repeat(&self) -> Repeat<AsRef<Self>>
     where
         Self: Sized,
-        Self::Output: Recoverable + Triable,
+        Self::Output: Recoverable + Fallible,
     {
         Repeat::new(self.as_ref(), UntilErr(()))
     }
@@ -115,15 +124,14 @@ pub trait Parser {
     fn repeat_eoi(&self) -> RepeatEOI<AsRef<Self>>
     where
         Self: Sized,
-        Self::Output: Pseudotriable,
     {
         RepeatEOI::new(self.as_ref(), UntilEOI(()))
     }
 
+    // TODO: usize -> NonZeroUsize
     fn repeat_min(&self, count: usize) -> RepeatMin<AsRef<Self>>
     where
         Self: Sized,
-        Self::Output: Pseudotriable,
     {
         assert!(count >= 1);
         RepeatMin::new(self.as_ref(), Minimum(count))
@@ -132,7 +140,6 @@ pub trait Parser {
     fn repeat_min_eoi(&self, count: usize) -> RepeatMinEOI<AsRef<Self>>
     where
         Self: Sized,
-        Self::Output: Pseudotriable,
     {
         assert!(count >= 1);
         RepeatMinEOI::new(self.as_ref(), MinimumEOI(count))
@@ -141,7 +148,7 @@ pub trait Parser {
     fn repeat_max(&self, count: usize) -> RepeatMax<AsRef<Self>>
     where
         Self: Sized,
-        Self::Output: Pseudotriable + Triable,
+        Self::Output: Fallible,
     {
         assert!(count >= 1);
         RepeatMax::new(self.as_ref(), Maximum(count))
@@ -150,7 +157,6 @@ pub trait Parser {
     fn repeat_exact(&self, count: usize) -> RepeatExact<AsRef<Self>>
     where
         Self: Sized,
-        Self::Output: Pseudotriable,
     {
         assert!(count >= 1);
         RepeatExact::new(self.as_ref(), Exact(count))

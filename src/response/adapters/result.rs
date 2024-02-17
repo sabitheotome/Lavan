@@ -1,10 +1,25 @@
 use crate::response::prelude::*;
 
-impl<T, E> Response for Result<T, E> {}
-
-impl<T, E> Pseudodata for Result<T, E> {
+impl<T, E> Response for Result<T, E> {
     type Value = T;
     type WithVal<Val> = Result<Val, E>;
+    type Error = E;
+    type WithErr<Err> = Result<T, Err>;
+
+    fn from_value(value: Self::Value) -> Self {
+        Ok(value)
+    }
+
+    fn from_error(error: Self::Error) -> Self {
+        Err(error)
+    }
+
+    fn map_err<Fun, Err>(self, f: Fun) -> Self::WithErr<Err>
+    where
+        Fun: FnOnce(Self::Error) -> Err,
+    {
+        self.map_err(f)
+    }
 
     fn map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
     where
@@ -19,21 +34,18 @@ impl<T, E> Pseudodata for Result<T, E> {
     {
         self.and_then(f)
     }
-}
 
-impl<T, E> Data for Result<T, E> {}
-
-impl<T, E> Exceptional for Result<T, E> {
-    type Error = E;
-    type WithErr<Err> = Result<T, Err>;
-
-    fn map_err<Fun, Err>(self, f: Fun) -> Self::WithErr<Err>
-    where
-        Fun: FnOnce(Self::Error) -> Err,
-    {
-        self.map_err(f)
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        match self {
+            Ok(v) => ControlFlow::Continue(v),
+            Err(e) => ControlFlow::Break(e),
+        }
     }
 }
+
+impl<T, E> ValueFunctor for Result<T, E> {}
+
+impl<T, E> ErrorFunctor for Result<T, E> {}
 
 impl<Val, Err> Combinable<()> for Result<Val, Err> {
     type Output = Self;
@@ -141,26 +153,24 @@ impl<Val, Err> Optionable for Result<Val, Err> {
     }
 }
 
-impl<Val, Err> Pseudotriable for Result<Val, Err> {
-    type Output = Val;
-    type Residual = Err;
-
-    fn from_output(value: Self::Output) -> Self {
-        Ok(value)
-    }
-
-    fn from_residual(error: Self::Residual) -> Self {
-        Err(error)
-    }
-
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
-        match self {
-            Ok(v) => ControlFlow::Continue(v),
-            Err(e) => ControlFlow::Break(e),
-        }
-    }
+impl<Val, Err> Fallible for Result<Val, Err> {
+    type Infallible = Sure<Self::Value>;
 }
 
-impl<Val, Err> Triable for Result<Val, Err> {
-    type Infallible = Sure<Self::Output>;
+impl<Val, Err> FilterableWithErr<Err> for Result<Val, Err> {
+    type Output = Result<Val, Err>;
+
+    fn filter_response_or_else(
+        self,
+        predicate: impl FnOnce(&Self::Value) -> bool,
+        error: impl FnOnce() -> Err,
+    ) -> Self::Output {
+        match self {
+            Ok(ok) => match predicate(&ok) {
+                true => Ok(ok),
+                false => Err(error()),
+            },
+            Err(err) => Err(err),
+        }
+    }
 }

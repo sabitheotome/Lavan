@@ -1,17 +1,43 @@
 use crate::response::prelude::*;
 
-impl Response for bool {}
-
-impl Pseudodata for bool {
+impl Response for bool {
     type Value = ();
+    type Error = ();
     type WithVal<Val> = bool;
+    type WithErr<Err> = bool;
+
+    fn from_value((): Self::Value) -> Self {
+        true
+    }
+
+    fn from_error((): Self::Error) -> Self {
+        false
+    }
 
     fn map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
     where
         Fun: FnOnce(Self::Value) -> Val,
     {
-        f(());
-        self
+        match self {
+            true => {
+                f(());
+                self
+            }
+            false => self,
+        }
+    }
+
+    fn map_err<Fun, Err>(self, f: Fun) -> Self::WithErr<Err>
+    where
+        Fun: FnOnce(Self::Error) -> Err,
+    {
+        match self {
+            true => true,
+            false => {
+                f(());
+                false
+            }
+        }
     }
 
     fn flat_map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
@@ -19,6 +45,13 @@ impl Pseudodata for bool {
         Fun: FnOnce(Self::Value) -> Self::WithVal<Val>,
     {
         f(())
+    }
+
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        match self {
+            true => ControlFlow::Continue(()),
+            false => ControlFlow::Break(()),
+        }
     }
 }
 
@@ -115,6 +148,14 @@ impl Disjoinable<bool> for bool {
     }
 }
 
+impl Attachable for bool {
+    type Output<V> = Option<V>;
+
+    fn attach_to_response<V>(self, value: V) -> Self::Output<V> {
+        self.then_some(value)
+    }
+}
+
 impl Recoverable for bool {
     fn recover_response<Rec, Str>(self, on_residual: Rec, stream: &mut Str) -> Self
     where
@@ -138,26 +179,6 @@ impl Optionable for bool {
     }
 }
 
-impl Pseudotriable for bool {
-    type Output = ();
-    type Residual = ();
-
-    fn from_output((): Self::Output) -> Self {
-        true
-    }
-
-    fn from_residual((): Self::Residual) -> Self {
-        false
-    }
-
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
-        match self {
-            true => ControlFlow::Continue(()),
-            false => ControlFlow::Break(()),
-        }
-    }
-}
-
-impl Triable for bool {
+impl Fallible for bool {
     type Infallible = ();
 }

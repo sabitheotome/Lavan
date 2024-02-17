@@ -41,30 +41,6 @@ where
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct Slice<'a, Par> {
-    pub(super) parser: Par,
-    pub(super) __marker: PhantomData<&'a ()>,
-}
-
-impl<'a, Par> Parser for Slice<'a, Par>
-where
-    Par: Parser<Output = ()>,
-    Par::Input: 'a,
-{
-    type Input = Par::Input;
-    type Output = Par::Output as Triable<Self::Input as Stream>::Slice<'a>;
-
-    #[inline]
-    fn parse_stream(&mut self, input: &mut Self::Input) -> Self::Output {
-        let start = input.offset();
-        self.parser.parse_stream(input)?;
-        let end = input.offset();
-
-        Ok(input.slice(start, end))
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
 pub struct Owned<Par> {
     pub(super) parser: Par,
 }

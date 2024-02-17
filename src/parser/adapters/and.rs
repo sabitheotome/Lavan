@@ -24,9 +24,9 @@ impl<Par0, Par1> And<Par0, Par1> {
     pub fn either_err<'a>(&'a self) -> And<impl Parser + 'a, impl Parser + 'a>
     where
         Par0: Parser,
-        Par0::Output: 'a + Exceptional,
+        Par0::Output: 'a + ErrorFunctor,
         Par1: Parser,
-        Par1::Output: 'a + Exceptional,
+        Par1::Output: 'a + ErrorFunctor,
     {
         use either::Either;
 

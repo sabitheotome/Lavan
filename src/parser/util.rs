@@ -1,19 +1,19 @@
 pub(crate) mod assoc {
     macro_rules! val {
         ($ident:ident) => {
-            <$ident::Output as $crate::response::traits::Pseudodata>::Value
+            <$ident::Output as $crate::response::traits::Response>::Value
         };
         ($ident:ident<$param:ty>) => {
-			<$ident::Output as $crate::response::traits::Pseudodata>::WithVal<$param>
+			<$ident::Output as $crate::response::traits::Response>::WithVal<$param>
 		};
     }
 
     macro_rules! err {
         ($ident:ident) => {
-            <$ident::Output as $crate::response::traits::Exceptional>::Error
+            <$ident::Output as $crate::response::traits::Response>::Error
         };
 		($ident:ident<$param:ty>) => {
-			<$ident::Output as $crate::response::traits::Exceptional>::WithErr<$param>
+			<$ident::Output as $crate::response::traits::Response>::WithErr<$param>
 		};
     }
 
@@ -22,7 +22,6 @@ pub(crate) mod assoc {
 }
 
 pub(crate) mod gen {
-
     macro_rules! parser {
         ($name:ident) => {};
     }

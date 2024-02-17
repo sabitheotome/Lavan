@@ -51,7 +51,6 @@ impl<Par, Mod> Repeater<Par, Mod> {
     pub(crate) fn new(parser: Par, mode: Mod) -> Self
     where
         Par: Parser,
-        Par::Output: Pseudotriable,
     {
         Self {
             parser,
@@ -66,19 +65,24 @@ impl<Par, Mod> Repeater<Par, Mod> {
 impl<Par, Col, Out> Parser for Repeat<Par, Col>
 where
     Par: Parser<Output = Out>,
-    Col: Default + Extend<Out::Output>,
-    Out: Pseudodata + Recoverable + Triable,
-    Out::WithVal<Col>: Triable<Output = Col>,
+    Col: Default + Extend<Out::Value>,
+    Out: Recoverable + Fallible,
+    Out::WithVal<Col>: Fallible<Value = Col>,
 {
     type Input = Par::Input;
-    type Output = <Out::WithVal<Col> as Triable>::Infallible;
+    type Output = <Out::WithVal<Col> as Fallible>::Infallible;
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         loop {
-            match self.parser.non_terminal().parse_stream(input).branch() {
+            match self
+                .parser
+                .non_terminal()
+                .parse_stream(input)
+                .control_flow()
+            {
                 ControlFlow::Continue(val) => collector.extend([val]),
-                ControlFlow::Break(_) => return <Self::Output as Pure>::pure(collector),
+                ControlFlow::Break(_) => return <Self::Output as Response>::from_value(collector),
             }
         }
     }
@@ -87,9 +91,9 @@ where
 impl<Par, Col, Out> Parser for RepeatEOI<Par, Col>
 where
     Par: Parser<Output = Out>,
-    Col: Default + Extend<Out::Output>,
-    Out: Pseudodata + Pseudotriable,
-    Out::WithVal<Col>: Pseudotriable<Output = Col, Residual = Out::Residual>,
+    Col: Default + Extend<Out::Value>,
+    Out: Response,
+    Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
 {
     type Input = Par::Input;
     type Output = Out::WithVal<Col>;
@@ -98,7 +102,7 @@ where
         let mut collector = Col::default();
         loop {
             if let None = input.peek() {
-                return Self::Output::from_output(collector);
+                return Self::Output::from_value(collector);
             }
             collector.extend([try_op!(self.parser.parse_stream(input))]);
         }
@@ -108,31 +112,36 @@ where
 impl<Par, Col, Out> Parser for RepeatMax<Par, Col>
 where
     Par: Parser<Output = Out>,
-    Col: Default + Extend<Out::Output>,
-    Out: Pseudodata + Recoverable + Triable,
-    Out::WithVal<Col>: Triable<Output = Col, Residual = Out::Residual>,
+    Col: Default + Extend<Out::Value>,
+    Out: Recoverable + Fallible,
+    Out::WithVal<Col>: Fallible<Value = Col, Error = Out::Error>,
 {
     type Input = Par::Input;
-    type Output = <Out::WithVal<Col> as Triable>::Infallible;
+    type Output = <Out::WithVal<Col> as Fallible>::Infallible;
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         for _ in 0..self.mode.0 {
-            match self.parser.non_terminal().parse_stream(input).branch() {
+            match self
+                .parser
+                .non_terminal()
+                .parse_stream(input)
+                .control_flow()
+            {
                 ControlFlow::Continue(val) => collector.extend([val]),
                 ControlFlow::Break(_) => break,
             }
         }
-        <Self::Output as Pure>::pure(collector)
+        <Self::Output as Response>::from_value(collector)
     }
 }
 
 impl<Par, Col, Out> Parser for RepeatExact<Par, Col>
 where
     Par: Parser<Output = Out>,
-    Col: Default + Extend<Out::Output>,
-    Out: Pseudodata + Pseudotriable,
-    Out::WithVal<Col>: Pseudotriable<Output = Col, Residual = Out::Residual>,
+    Col: Default + Extend<Out::Value>,
+    Out: Response,
+    Out::WithVal<Col>: Fallible<Value = Col, Error = Out::Error>,
 {
     type Input = Par::Input;
     type Output = Out::WithVal<Col>;
@@ -142,16 +151,16 @@ where
         for _ in 0..self.mode.0 {
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
-        Self::Output::from_output(collector)
+        Self::Output::from_value(collector)
     }
 }
 
 impl<Par, Col, Out> Parser for RepeatMin<Par, Col>
 where
     Par: Parser<Output = Out>,
-    Col: Default + Extend<Out::Output>,
-    Out: Pseudodata + Recoverable + Triable,
-    Out::WithVal<Col>: Triable<Output = Col, Residual = Out::Residual>,
+    Col: Default + Extend<Out::Value>,
+    Out: Recoverable + Fallible,
+    Out::WithVal<Col>: Fallible<Value = Col, Error = Out::Error>,
 {
     type Input = Par::Input;
     type Output = Out::WithVal<Col>;
@@ -162,9 +171,14 @@ where
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
         loop {
-            match self.parser.non_terminal().parse_stream(input).branch() {
+            match self
+                .parser
+                .non_terminal()
+                .parse_stream(input)
+                .control_flow()
+            {
                 ControlFlow::Continue(val) => collector.extend([val]),
-                ControlFlow::Break(_) => return Self::Output::from_output(collector),
+                ControlFlow::Break(_) => return Self::Output::from_value(collector),
             }
         }
     }
@@ -173,9 +187,9 @@ where
 impl<Par, Col, Out> Parser for RepeatMinEOI<Par, Col>
 where
     Par: Parser<Output = Out>,
-    Col: Default + Extend<Out::Output>,
-    Out: Pseudodata + Triable,
-    Out::WithVal<Col>: Triable<Output = Col, Residual = Out::Residual>,
+    Col: Default + Extend<Out::Value>,
+    Out: Fallible,
+    Out::WithVal<Col>: Fallible<Value = Col, Error = Out::Error>,
 {
     type Input = Par::Input;
     type Output = Out::WithVal<Col>;
@@ -187,7 +201,7 @@ where
         }
         loop {
             if let None = input.peek() {
-                return Self::Output::from_output(collector);
+                return Self::Output::from_value(collector);
             }
             collector.extend([try_op!(self.parser.parse_stream(input))]);
         }
@@ -200,9 +214,9 @@ impl<Par, Int, Col, Out> Parser for Repeater<Par, Inter<UntilErr, Int>, Col>
 where
     Par: Parser<Output = Out>,
     Int: Parser<Input = Par::Input>,
-    Col: Default + Extend<Out::Output>,
-    Out: Pseudotriable<Output = Col> + Recoverable,
-    Int::Output: Pseudotriable + Recoverable,
+    Col: Default + Extend<Out::Value>,
+    Out: Response<Value = Col> + Recoverable,
+    Int::Output: Recoverable,
 {
     type Input = Par::Input;
     type Output = Out;
@@ -211,19 +225,24 @@ where
         let mut collector = Col::default();
         let Inter(UntilErr(()), ref int) = self.mode;
         // first iteration
-        match self.parser.non_terminal().parse_stream(input).branch() {
+        match self
+            .parser
+            .non_terminal()
+            .parse_stream(input)
+            .control_flow()
+        {
             ControlFlow::Continue(val) => collector.extend([val]),
-            ControlFlow::Break(err) => return Out::from_output(collector),
+            ControlFlow::Break(err) => return Out::from_value(collector),
         }
         loop {
             // breaks if separator was found
-            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).branch() {
+            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).control_flow() {
                 break;
             }
             // expects main parser
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
-        Out::from_output(collector)
+        Out::from_value(collector)
     }
 }
 
@@ -231,9 +250,9 @@ impl<Par, Int, Col, Out> Parser for Repeater<Par, Inter<UntilEOI, Int>, Col>
 where
     Par: Parser<Output = Out>,
     Int: Parser<Input = Par::Input>,
-    Col: Default + Extend<Out::Output>,
-    Out: Pseudotriable<Output = Col>,
-    Int::Output: Pseudotriable + Recoverable,
+    Col: Default + Extend<Out::Value>,
+    Out: Response<Value = Col>,
+    Int::Output: Recoverable,
 {
     type Input = Par::Input;
     type Output = Out;
@@ -242,22 +261,22 @@ where
         let mut collector = Col::default();
         let Inter(UntilEOI(()), ref int) = self.mode;
         if let None = input.peek() {
-            return Out::from_output(collector);
+            return Out::from_value(collector);
         }
-        match self.parser.parse_stream(input).branch() {
+        match self.parser.parse_stream(input).control_flow() {
             ControlFlow::Continue(val) => collector.extend([val]),
-            ControlFlow::Break(err) => return Out::from_output(collector),
+            ControlFlow::Break(err) => return Out::from_value(collector),
         }
         loop {
-            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).branch() {
+            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).control_flow() {
                 break;
             }
             if let None = input.peek() {
-                return Out::from_output(collector);
+                return Out::from_value(collector);
             }
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
-        Out::from_output(collector)
+        Out::from_value(collector)
     }
 }
 
@@ -265,9 +284,9 @@ impl<Par, Int, Col, Out> Parser for Repeater<Par, Inter<Maximum, Int>, Col>
 where
     Par: Parser<Output = Out>,
     Int: Parser<Input = Par::Input>,
-    Col: Default + Extend<Out::Output>,
-    Out: Pseudotriable<Output = Col> + Recoverable,
-    Int::Output: Pseudotriable + Recoverable,
+    Col: Default + Extend<Out::Value>,
+    Out: Response<Value = Col> + Recoverable,
+    Int::Output: Recoverable,
 {
     type Input = Par::Input;
     type Output = Out;
@@ -275,17 +294,22 @@ where
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         let Inter(Maximum(count), ref int) = self.mode;
-        match self.parser.non_terminal().parse_stream(input).branch() {
+        match self
+            .parser
+            .non_terminal()
+            .parse_stream(input)
+            .control_flow()
+        {
             ControlFlow::Continue(val) => collector.extend([val]),
-            ControlFlow::Break(err) => return Out::from_output(collector),
+            ControlFlow::Break(err) => return Out::from_value(collector),
         }
         for _ in 0..count - 1 {
-            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).branch() {
+            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).control_flow() {
                 break;
             }
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
-        Out::from_output(collector)
+        Out::from_value(collector)
     }
 }
 
@@ -293,9 +317,9 @@ impl<Par, Int, Col, Out> Parser for Repeater<Par, Inter<Exact, Int>, Col>
 where
     Par: Parser<Output = Out>,
     Int: Parser<Input = Par::Input>,
-    Col: Default + Extend<Out::Output>,
-    Out: Pseudotriable<Output = Col>,
-    Int::Output: Pseudotriable<Residual = Out::Residual> + Recoverable,
+    Col: Default + Extend<Out::Value>,
+    Out: Response<Value = Col>,
+    Int::Output: Response<Error = Out::Error> + Recoverable,
 {
     type Input = Par::Input;
     type Output = Out;
@@ -308,7 +332,7 @@ where
             try_op!(int.non_terminal().parse_stream(input));
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
-        Out::from_output(collector)
+        Out::from_value(collector)
     }
 }
 
@@ -316,9 +340,9 @@ impl<Par, Int, Col, Out> Parser for Repeater<Par, Inter<Minimum, Int>, Col>
 where
     Par: Parser<Output = Out>,
     Int: Parser<Input = Par::Input>,
-    Col: Default + Extend<Out::Output>,
-    Out: Pseudotriable<Output = Col>,
-    Int::Output: Pseudotriable<Residual = Out::Residual> + Recoverable,
+    Col: Default + Extend<Out::Value>,
+    Out: Response<Value = Col>,
+    Int::Output: Response<Error = Out::Error> + Recoverable,
 {
     type Input = Par::Input;
     type Output = Out;
@@ -332,12 +356,12 @@ where
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
         loop {
-            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).branch() {
+            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).control_flow() {
                 break;
             }
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
-        Out::from_output(collector)
+        Out::from_value(collector)
     }
 }
 
@@ -345,9 +369,9 @@ impl<Par, Int, Col, Out> Parser for Repeater<Par, Inter<MinimumEOI, Int>, Col>
 where
     Par: Parser<Output = Out>,
     Int: Parser<Input = Par::Input>,
-    Col: Default + Extend<Out::Output>,
-    Out: Pseudotriable<Output = Col>,
-    Int::Output: Pseudotriable<Residual = Out::Residual> + Recoverable,
+    Col: Default + Extend<Out::Value>,
+    Out: Response<Value = Col>,
+    Int::Output: Response<Error = Out::Error> + Recoverable,
 {
     type Input = Par::Input;
     type Output = Out;
@@ -361,15 +385,15 @@ where
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
         loop {
-            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).branch() {
+            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).control_flow() {
                 break;
             }
             if let None = input.peek() {
-                return Out::from_output(collector);
+                return Out::from_value(collector);
             }
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
-        Out::from_output(collector)
+        Out::from_value(collector)
     }
 }
 
@@ -388,9 +412,9 @@ impl<Par, Mod> Repeater<Par, Mod, ()> {
     #[inline]
     pub fn collect<T>(self) -> Repeater<Par, Mod, T>
     where
-        T: Default + Extend<<Par::Output as Pseudodata>::Value>,
+        T: Default + Extend<<Par::Output as Response>::Value>,
         Par: Parser,
-        Par::Output: Pseudodata,
+        Par::Output: ValueFunctor,
     {
         Repeater {
             parser: self.parser,
@@ -400,10 +424,10 @@ impl<Par, Mod> Repeater<Par, Mod, ()> {
     }
 
     #[inline]
-    pub fn to_vec(self) -> Repeater<Par, Mod, Vec<<Par::Output as Pseudodata>::Value>>
+    pub fn to_vec(self) -> Repeater<Par, Mod, Vec<<Par::Output as Response>::Value>>
     where
         Par: Parser,
-        Par::Output: Pseudodata,
+        Par::Output: ValueFunctor,
     {
         Repeater {
             parser: self.parser,

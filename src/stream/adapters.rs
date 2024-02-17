@@ -1,18 +1,15 @@
-use super::traits::Stream;
+use super::traits::{Stream, StreamSlice};
 
-impl<T> Stream for (Vec<T>, usize)
+impl<'a, T> Stream for (&'a [T], usize)
 where
     T: Clone,
 {
     type Item = T;
     type Offset = usize;
     type Span = (usize, usize);
-    type Peek<'a> = &'a T
+    type Peek<'b> = &'b T
     where
-        Self: 'a;
-    type Slice<'a> = &'a [T]
-    where
-        Self: 'a;
+        Self: 'b;
 
     fn offset(&self) -> Self::Offset {
         self.1
@@ -52,12 +49,19 @@ where
         self.0.get(self.offset() + offset)
     }
 
-    fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice<'_> {
-        &self.0[start..end]
-    }
-
     fn span(&self, start: Self::Offset, end: Self::Offset) -> Self::Span {
         (start, end)
+    }
+}
+
+impl<'a, T> StreamSlice<'a> for (&'a [T], usize)
+where
+    T: 'a + Clone,
+{
+    type Slice = &'a [T];
+
+    fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice {
+        &self.0[start..end]
     }
 }
 
@@ -66,9 +70,6 @@ impl<'b> Stream for (&'b str, usize) {
     type Offset = usize;
     type Span = (usize, usize);
     type Peek<'a> = char
-    where
-        Self: 'a;
-    type Slice<'a> = &'a str
     where
         Self: 'a;
 
@@ -110,11 +111,15 @@ impl<'b> Stream for (&'b str, usize) {
         self.0.chars().nth(self.offset() + offset)
     }
 
-    fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice<'_> {
-        &self.0[start..end]
-    }
-
     fn span(&self, start: Self::Offset, end: Self::Offset) -> Self::Span {
         (start, end)
+    }
+}
+
+impl<'a> StreamSlice<'a> for (&'a str, usize) {
+    type Slice = &'a str;
+
+    fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice {
+        &self.0[start..end]
     }
 }

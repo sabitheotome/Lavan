@@ -2,6 +2,27 @@ use super::traits::Parser;
 use crate::stream::traits::Stream;
 use std::marker::PhantomData;
 
+pub struct EOI<Str>(PhantomData<Str>);
+
+pub fn eoi<Str>() -> EOI<Str>
+where
+    Str: Stream,
+{
+    EOI(PhantomData)
+}
+
+impl<Str> Parser for EOI<Str>
+where
+    Str: Stream,
+{
+    type Input = Str;
+    type Output = bool;
+
+    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+        input.has_next()
+    }
+}
+
 pub struct Any<Str>(PhantomData<Str>);
 
 pub fn any<Str>() -> Any<Str>
@@ -46,23 +67,48 @@ where
     }
 }
 
-pub struct EOI<Str>(PhantomData<Str>);
+pub struct AnyEq<Str, const I: bool = false>(PhantomData<Str>, Str::Item)
+where
+    Str: Stream;
 
-pub fn eoi<Str>() -> EOI<Str>
+type AnyNe<Str> = AnyEq<Str, true>;
+
+pub fn any_eq<Str>(v: Str::Item) -> AnyEq<Str>
 where
     Str: Stream,
 {
-    EOI(PhantomData)
+    AnyEq(PhantomData, v)
 }
 
-impl<Str> Parser for EOI<Str>
+pub fn any_ne<Str>(v: Str::Item) -> AnyNe<Str>
 where
     Str: Stream,
 {
+    AnyEq(PhantomData, v)
+}
+
+impl<Str> Parser for AnyEq<Str>
+where
+    Str: Stream,
+    Str::Item: PartialEq,
+{
     type Input = Str;
-    type Output = bool;
+    type Output = Option<Str::Item>;
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        input.has_next()
+        any().filter(|v| *v == self.1).parse_stream(input)
+    }
+}
+
+impl<Str> Parser for AnyNe<Str>
+where
+    Str: Stream,
+    Str::Item: PartialEq,
+{
+    type Input = Str;
+    type Output = Option<Str::Item>;
+
+    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+        any().filter(|v| *v != self.1).parse_stream(input)
     }
 }

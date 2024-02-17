@@ -1,10 +1,17 @@
 use crate::response::prelude::*;
 
-impl<T> Response for Option<T> {}
-
-impl<T> Pseudodata for Option<T> {
+impl<T> Response for Option<T> {
     type Value = T;
+    type Error = ();
     type WithVal<Val> = Option<Val>;
+    type WithErr<Err> = Option<T>;
+    fn from_value(value: Self::Value) -> Self {
+        Some(value)
+    }
+
+    fn from_error((): Self::Error) -> Self {
+        None
+    }
 
     fn map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
     where
@@ -13,15 +20,35 @@ impl<T> Pseudodata for Option<T> {
         self.map(f)
     }
 
+    fn map_err<Fun, Err>(self, f: Fun) -> Self::WithErr<Err>
+    where
+        Fun: FnOnce(Self::Error) -> Err,
+    {
+        match self {
+            Some(val) => Some(val),
+            None => {
+                f(());
+                None
+            }
+        }
+    }
+
     fn flat_map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
     where
         Fun: FnOnce(Self::Value) -> Self::WithVal<Val>,
     {
         self.and_then(f)
     }
+
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        match self {
+            Some(v) => ControlFlow::Continue(v),
+            None => ControlFlow::Break(()),
+        }
+    }
 }
 
-impl<T> Data for Option<T> {}
+impl<T> ValueFunctor for Option<T> {}
 
 impl<Val> Combinable<()> for Option<Val> {
     type Output = Self;
@@ -129,26 +156,26 @@ impl<Val> Optionable for Option<Val> {
     }
 }
 
-impl<Val> Pseudotriable for Option<Val> {
-    type Output = Val;
-    type Residual = ();
+impl<Val> Fallible for Option<Val> {
+    type Infallible = Sure<Self::Value>;
+}
 
-    fn from_output(value: Self::Output) -> Self {
-        Some(value)
-    }
+impl<Val> Filterable for Option<Val> {
+    type Output = Option<Val>;
 
-    fn from_residual((): Self::Residual) -> Self {
-        None
-    }
-
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
-        match self {
-            Some(v) => ControlFlow::Continue(v),
-            None => ControlFlow::Break(()),
-        }
+    fn filter_response(self, predicate: impl FnOnce(&Self::Value) -> bool) -> Self::Output {
+        self.filter(predicate)
     }
 }
 
-impl<Val> Triable for Option<Val> {
-    type Infallible = Sure<Self::Output>;
+impl<Val, Err> FilterableWithErr<Err> for Option<Val> {
+    type Output = Result<Val, Err>;
+
+    fn filter_response_or_else(
+        self,
+        predicate: impl FnOnce(&Self::Value) -> bool,
+        error: impl FnOnce() -> Err,
+    ) -> Self::Output {
+        self.filter(predicate).ok_or_else(error)
+    }
 }
