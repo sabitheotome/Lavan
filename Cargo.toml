@@ -1,6 +1,6 @@
 [package]
 name = "lavan"
-version = "0.0.3-UNSTABLE"
+version = "0.0.4-unstable"
 authors = ["Sabi <sabitheotome@gmail.com>"]
 description = "Lavan is a parser library"
 license = "GPL-3.0"

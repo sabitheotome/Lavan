@@ -1,4 +1,4 @@
-# Lavan Parser - v0.0.3 EXPERIMENTAL
+# Lavan Parser - v0.0.4 UNSTABLE
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
