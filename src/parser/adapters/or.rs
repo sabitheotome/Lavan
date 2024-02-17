@@ -26,9 +26,9 @@ impl<Par0, Par1> Or<Par0, Par1> {
     pub fn either<'a, Str>(&'a self) -> Or<impl Parser + 'a, impl Parser + 'a>
     where
         Par0: Parser,
-        Par0::Output: 'a + Data,
+        Par0::Output: 'a + ValueFunctor,
         Par1: Parser,
-        Par1::Output: 'a + Data,
+        Par1::Output: 'a + ValueFunctor,
     {
         let parser0 = self.parser0.map(Either::<val![Par0], val![Par1]>::Left);
         let parser1 = self.parser1.map(Either::<val![Par0], val![Par1]>::Right);

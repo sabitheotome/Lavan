@@ -16,11 +16,19 @@ impl<T> Sure<T> {
     }
 }
 
-impl<T> Response for Sure<T> {}
-
-impl<T> Pseudodata for Sure<T> {
+impl<T> Response for Sure<T> {
     type Value = T;
+    type Error = Infallible;
     type WithVal<Val> = Sure<Val>;
+    type WithErr<Err> = Sure<T>;
+
+    fn from_value(value: Self::Value) -> Self {
+        Sure(value)
+    }
+
+    fn from_error(_error: Self::Error) -> Self {
+        unreachable!()
+    }
 
     fn map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
     where
@@ -29,27 +37,26 @@ impl<T> Pseudodata for Sure<T> {
         Sure(f(self.value()))
     }
 
+    fn map_err<Fun, Err>(self, _: Fun) -> Self::WithErr<Err>
+    where
+        Fun: FnOnce(Self::Error) -> Err,
+    {
+        self
+    }
+
     fn flat_map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
     where
         Fun: FnOnce(Self::Value) -> Self::WithVal<Val>,
     {
         f(self.value())
     }
-}
 
-impl<T> Data for Sure<T> {}
-
-impl<T> Pure for Sure<T> {
-    type Value = T;
-
-    fn pure(value: Self::Value) -> Self {
-        Sure(value)
-    }
-
-    fn unwrap(self) -> Self::Value {
-        self.value()
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        ControlFlow::Continue(self.value())
     }
 }
+
+impl<T> ValueFunctor for Sure<T> {}
 
 impl<Val> Combinable<()> for Sure<Val> {
     type Output = Self;
@@ -131,19 +138,28 @@ impl<Val> Ignorable for Sure<Val> {
     }
 }
 
-impl<Val> Pseudotriable for Sure<Val> {
-    type Output = Val;
-    type Residual = Infallible;
+impl<Val> Filterable for Sure<Val> {
+    type Output = Option<Val>;
 
-    fn from_output(value: Self::Output) -> Self {
-        Sure(value)
+    fn filter_response(self, predicate: impl FnOnce(&Self::Value) -> bool) -> Self::Output {
+        match predicate(self.get()) {
+            true => Some(self.value()),
+            false => None,
+        }
     }
+}
 
-    fn from_residual(_error: Self::Residual) -> Self {
-        unreachable!()
-    }
+impl<Val, Err> FilterableWithErr<Err> for Sure<Val> {
+    type Output = Result<Val, Err>;
 
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
-        ControlFlow::Continue(self.value())
+    fn filter_response_or_else(
+        self,
+        predicate: impl FnOnce(&Self::Value) -> bool,
+        error: impl FnOnce() -> Err,
+    ) -> Self::Output {
+        match predicate(self.get()) {
+            true => Ok(self.value()),
+            false => Err(error()),
+        }
     }
 }

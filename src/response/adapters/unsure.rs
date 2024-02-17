@@ -35,18 +35,36 @@ impl<E> From<Unsure<E>> for Result<(), E> {
     }
 }
 
-impl<T> Response for Unsure<T> {}
-
-impl<T> Pseudodata for Unsure<T> {
+impl<T> Response for Unsure<T> {
     type Value = ();
+    type Error = T;
     type WithVal<Val> = Unsure<T>;
+    type WithErr<Err> = Unsure<Err>;
+
+    fn from_value((): Self::Value) -> Self {
+        Unsure::ok()
+    }
+
+    fn from_error(error: Self::Error) -> Self {
+        Unsure::err(error)
+    }
 
     fn map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
     where
         Fun: FnOnce(Self::Value) -> Val,
     {
-        f(());
-        self
+        self.into_result()
+            .map(|()| {
+                f(());
+            })
+            .into()
+    }
+
+    fn map_err<Fun, Err>(self, f: Fun) -> Self::WithErr<Err>
+    where
+        Fun: FnOnce(Self::Error) -> Err,
+    {
+        self.into_result().map_err(f).into()
     }
 
     fn flat_map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
@@ -55,17 +73,9 @@ impl<T> Pseudodata for Unsure<T> {
     {
         f(())
     }
-}
 
-impl<T> Exceptional for Unsure<T> {
-    type Error = T;
-    type WithErr<Err> = Unsure<Err>;
-
-    fn map_err<Fun, Err>(self, f: Fun) -> Self::WithErr<Err>
-    where
-        Fun: FnOnce(Self::Error) -> Err,
-    {
-        self.into_result().map_err(f).into()
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        self.into_result().control_flow()
     }
 }
 
@@ -158,6 +168,14 @@ impl<Err> Disjoinable<Unsure<Err>> for Unsure<Err> {
     }
 }
 
+impl<Err> Attachable for Unsure<Err> {
+    type Output<V> = Result<V, Err>;
+
+    fn attach_to_response<V>(self, value: V) -> Self::Output<V> {
+        self.into_result().map(|()| value)
+    }
+}
+
 impl<Err> Recoverable for Unsure<Err> {
     fn recover_response<Rec, Str>(self, on_residual: Rec, stream: &mut Str) -> Self
     where
@@ -181,23 +199,6 @@ impl<Err> Optionable for Unsure<Err> {
     }
 }
 
-impl<Err> Pseudotriable for Unsure<Err> {
-    type Output = ();
-    type Residual = Err;
-
-    fn from_output((): Self::Output) -> Self {
-        Unsure::ok()
-    }
-
-    fn from_residual(error: Self::Residual) -> Self {
-        Unsure::err(error)
-    }
-
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
-        self.into_result().branch()
-    }
-}
-
-impl<Err> Triable for Unsure<Err> {
+impl<Err> Fallible for Unsure<Err> {
     type Infallible = ();
 }

@@ -7,9 +7,6 @@ pub trait Stream {
     type Peek<'a>
     where
         Self: 'a;
-    type Slice<'a>
-    where
-        Self: 'a;
 
     fn offset(&self) -> Self::Offset;
     fn offset_mut(&mut self) -> &mut Self::Offset;
@@ -24,7 +21,6 @@ pub trait Stream {
     fn peek(&self) -> Option<Self::Peek<'_>>;
     fn peek_nth(&self, offset: Self::Offset) -> Option<Self::Peek<'_>>;
 
-    fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice<'_>;
     fn span(&self, start: Self::Offset, end: Self::Offset) -> Self::Span;
 
     fn nth(&mut self, offset: Self::Offset) -> Option<Self::Item> {
@@ -53,4 +49,9 @@ pub trait Stream {
             None => true,
         }
     }
+}
+
+pub trait StreamSlice<'a>: Stream {
+    type Slice: 'a;
+    fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice;
 }

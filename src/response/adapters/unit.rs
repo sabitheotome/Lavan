@@ -1,10 +1,16 @@
 use crate::response::prelude::*;
 
-impl Response for () {}
-
-impl Pseudodata for () {
+impl Response for () {
     type Value = ();
+    type Error = Infallible;
     type WithVal<Val> = ();
+    type WithErr<Err> = ();
+
+    fn from_value((): Self::Value) -> Self {}
+
+    fn from_error(_: Self::Error) -> Self {
+        unreachable!()
+    }
 
     fn map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
     where
@@ -13,18 +19,22 @@ impl Pseudodata for () {
         f(());
     }
 
+    fn map_err<Fun, Err>(self, f: Fun) -> Self::WithErr<Err>
+    where
+        Fun: FnOnce(Self::Error) -> Err,
+    {
+    }
+
     fn flat_map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
     where
         Fun: FnOnce(Self::Value) -> Self::WithVal<Val>,
     {
         f(());
     }
-}
 
-impl Pure for () {
-    type Value = ();
-    fn pure(value: Self::Value) -> Self {}
-    fn unwrap(self) -> Self::Value {}
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        ControlFlow::Continue(())
+    }
 }
 
 impl<Fun, Val> Mappable<Fun> for ()
@@ -52,17 +62,10 @@ where
     }
 }
 
-impl Pseudotriable for () {
-    type Output = ();
-    type Residual = Infallible;
+impl Attachable for () {
+    type Output<V> = Sure<V>;
 
-    fn from_output((): Self::Output) -> Self {}
-
-    fn from_residual(_error: Self::Residual) -> Self {
-        unreachable!()
-    }
-
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
-        ControlFlow::Continue(())
+    fn attach_to_response<V>(self, value: V) -> Self::Output<V> {
+        Sure(value)
     }
 }

@@ -1,5 +1,6 @@
 use crate::parser::prelude::*;
 use crate::response::prelude::*;
+use crate::response::util::try_op;
 use crate::stream::traits::Stream;
 use std::marker::PhantomData;
 
@@ -10,13 +11,13 @@ pub struct TryMap<Par, Fun, Val> {
 }
 
 impl<Par, Fun, Val> TryMap<Par, Fun, Val> {
-    pub(crate) fn new(parser: Par, function: Fun) -> TryMap<Par, Fun, Val>
+    pub(crate) fn new(parser: Par, function: Fun) -> Self
     where
         Par: Parser,
-        Par::Output: Pseudodata + Exceptional,
+        Par::Output: ValueFunctor + Fallible,
         Fun: Fn(val![Par]) -> val![Par<Val>],
     {
-        TryMap {
+        Self {
             parser,
             function,
             _marker: PhantomData,
@@ -27,7 +28,7 @@ impl<Par, Fun, Val> TryMap<Par, Fun, Val> {
 impl<Par, Fun, Val> Parser for TryMap<Par, Fun, Val>
 where
     Par: Parser,
-    Par::Output: Pseudodata + Exceptional,
+    Par::Output: ValueFunctor + Fallible,
     Fun: Fn(val![Par]) -> val![Par<Val>],
 {
     type Input = Par::Input;

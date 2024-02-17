@@ -1,0 +1,44 @@
+use crate::parser::prelude::*;
+use crate::response::prelude::*;
+use crate::response::util::try_op;
+use crate::stream::traits::{Stream, StreamSlice};
+use std::marker::PhantomData;
+
+#[derive(Clone, Copy, Debug)]
+pub struct Slice<'a, Par> {
+    pub(super) parser: Par,
+    pub(super) _marker: PhantomData<&'a ()>,
+}
+
+impl<'a, Par> Slice<'a, Par> {
+    pub fn new(parser: Par) -> Self
+    where
+        Par: Parser,
+        Par::Input: StreamSlice<'a>,
+        Par::Output: Response<Value = ()>,
+    {
+        Self {
+            parser,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<'a, Par, Slc> Parser for Slice<'a, Par>
+where
+    Par: Parser,
+    Par::Input: StreamSlice<'a, Slice = Slc>,
+    Par::Output: Response<Value = ()>,
+{
+    type Input = Par::Input;
+    type Output = <Par::Output as Response>::WithVal<Slc>;
+
+    #[inline]
+    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+        let start = input.offset();
+        let result = self.parser.parse_stream(input);
+        let end = input.offset();
+
+        result.map(move |_| input.slice(start, end))
+    }
+}

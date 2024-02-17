@@ -1,28 +1,29 @@
 #![allow(unused)]
+#![cfg(feature = "experimental")]
 
 pub mod parser {
     pub mod adapters {
-        pub mod core {
-            pub mod and;
-            pub mod as_ref;
-            pub mod filter;
-            pub mod ignore;
-            pub mod map;
-            pub mod map_err;
-            pub mod non_terminal;
-            pub mod opt;
-            pub mod or;
-            pub mod repeat;
-            pub mod try_map;
-        }
-        pub mod util {
+        pub mod and;
+        pub mod as_ref;
+        pub mod eq;
+        pub mod filter;
+        pub mod ignore;
+        pub mod map;
+        pub mod map_err;
+        pub mod non_terminal;
+        pub mod opt;
+        pub mod or;
+        pub mod repeat;
+        pub mod slice;
+        pub mod try_map;
+        pub(crate) mod todo {
             pub mod delimited;
             pub mod owned;
             pub mod parse_str;
             pub mod spanned;
+            pub mod try_with;
             pub mod unwrapped;
         }
-        //pub mod conversion;
     }
     pub(crate) mod prelude;
     pub mod sources;
@@ -46,6 +47,4 @@ pub mod stream {
     pub mod adapters;
     pub mod traits;
 }
-pub mod prelude {
-    // TODO
-}
+pub mod prelude;
