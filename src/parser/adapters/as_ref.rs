@@ -2,6 +2,11 @@ use crate::parser::prelude::*;
 use crate::response::prelude::*;
 use crate::stream::traits::Stream;
 
+/// A parser for taking another parser by reference
+///
+/// This `struct` is created by the [`Parser::and`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct AsRef<'a, Par> {
     parser: &'a Par,
 }

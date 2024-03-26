@@ -28,7 +28,7 @@ pub trait Stream {
         self.next()
     }
 
-    fn parse<T>(&mut self) -> T
+    fn parse<T>(&mut self) -> T::Output
     where
         T: Parse<Input = Self>,
     {

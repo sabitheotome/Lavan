@@ -2,8 +2,11 @@ use super::traits::Parser;
 use crate::stream::traits::Stream;
 use std::marker::PhantomData;
 
+// TODO: Documentation
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct EOI<Str>(PhantomData<Str>);
 
+// TODO: Documentation
 pub fn eoi<Str>() -> EOI<Str>
 where
     Str: Stream,
@@ -23,8 +26,11 @@ where
     }
 }
 
+// TODO: Documentation
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct Any<Str>(PhantomData<Str>);
 
+// TODO: Documentation
 pub fn any<Str>() -> Any<Str>
 where
     Str: Stream,
@@ -44,8 +50,11 @@ where
     }
 }
 
+// TODO: Documentation
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct AnyIf<Str, Fun>(PhantomData<Str>, Fun);
 
+// TODO: Documentation
 pub fn any_if<Str, Fun>(f: Fun) -> AnyIf<Str, Fun>
 where
     Str: Stream,
@@ -67,20 +76,14 @@ where
     }
 }
 
+// TODO: Documentation
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct AnyEq<Str, const I: bool = false>(PhantomData<Str>, Str::Item)
 where
     Str: Stream;
 
-type AnyNe<Str> = AnyEq<Str, true>;
-
+// TODO: Documentation
 pub fn any_eq<Str>(v: Str::Item) -> AnyEq<Str>
-where
-    Str: Stream,
-{
-    AnyEq(PhantomData, v)
-}
-
-pub fn any_ne<Str>(v: Str::Item) -> AnyNe<Str>
 where
     Str: Stream,
 {
@@ -98,6 +101,17 @@ where
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         any().filter(|v| *v == self.1).parse_stream(input)
     }
+}
+
+// TODO: Documentation
+type AnyNe<Str> = AnyEq<Str, true>;
+
+// TODO: Documentation
+pub fn any_ne<Str>(v: Str::Item) -> AnyNe<Str>
+where
+    Str: Stream,
+{
+    AnyEq(PhantomData, v)
 }
 
 impl<Str> Parser for AnyNe<Str>

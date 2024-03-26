@@ -5,6 +5,11 @@ use crate::stream::traits::Stream;
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
 
+/// A parser for repeatition and collection
+///
+/// This `struct` is created by the [`Parser::repeat`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 #[derive(Clone, Copy, Debug)]
 pub struct Repeater<Par, Mod, Col = ()> {
     parser: Par,
@@ -39,11 +44,17 @@ pub mod mode {
 
 use mode::*;
 
+// TODO: Documentation
 pub type Repeat<Par, Col = ()> = Repeater<Par, UntilErr, Col>;
+// TODO: Documentation
 pub type RepeatEOI<Par, Col = ()> = Repeater<Par, UntilEOI, Col>;
+// TODO: Documentation
 pub type RepeatMin<Par, Col = ()> = Repeater<Par, Minimum, Col>;
+// TODO: Documentation
 pub type RepeatMinEOI<Par, Col = ()> = Repeater<Par, MinimumEOI, Col>;
+// TODO: Documentation
 pub type RepeatMax<Par, Col = ()> = Repeater<Par, Maximum, Col>;
+// TODO: Documentation
 pub type RepeatExact<Par, Col = ()> = Repeater<Par, Exact, Col>;
 
 impl<Par, Mod> Repeater<Par, Mod> {
@@ -75,12 +86,7 @@ where
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         loop {
-            match self
-                .parser
-                .non_terminal()
-                .parse_stream(input)
-                .control_flow()
-            {
+            match self.parser.auto_bt().parse_stream(input).control_flow() {
                 ControlFlow::Continue(val) => collector.extend([val]),
                 ControlFlow::Break(_) => return <Self::Output as Response>::from_value(collector),
             }
@@ -122,12 +128,7 @@ where
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         for _ in 0..self.mode.0 {
-            match self
-                .parser
-                .non_terminal()
-                .parse_stream(input)
-                .control_flow()
-            {
+            match self.parser.auto_bt().parse_stream(input).control_flow() {
                 ControlFlow::Continue(val) => collector.extend([val]),
                 ControlFlow::Break(_) => break,
             }
@@ -171,12 +172,7 @@ where
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
         loop {
-            match self
-                .parser
-                .non_terminal()
-                .parse_stream(input)
-                .control_flow()
-            {
+            match self.parser.auto_bt().parse_stream(input).control_flow() {
                 ControlFlow::Continue(val) => collector.extend([val]),
                 ControlFlow::Break(_) => return Self::Output::from_value(collector),
             }
@@ -225,18 +221,13 @@ where
         let mut collector = Col::default();
         let Inter(UntilErr(()), ref int) = self.mode;
         // first iteration
-        match self
-            .parser
-            .non_terminal()
-            .parse_stream(input)
-            .control_flow()
-        {
+        match self.parser.auto_bt().parse_stream(input).control_flow() {
             ControlFlow::Continue(val) => collector.extend([val]),
             ControlFlow::Break(err) => return Out::from_value(collector),
         }
         loop {
             // breaks if separator was found
-            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).control_flow() {
+            if let ControlFlow::Break(err) = int.auto_bt().parse_stream(input).control_flow() {
                 break;
             }
             // expects main parser
@@ -268,7 +259,7 @@ where
             ControlFlow::Break(err) => return Out::from_value(collector),
         }
         loop {
-            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).control_flow() {
+            if let ControlFlow::Break(err) = int.auto_bt().parse_stream(input).control_flow() {
                 break;
             }
             if let None = input.peek() {
@@ -294,17 +285,12 @@ where
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         let Inter(Maximum(count), ref int) = self.mode;
-        match self
-            .parser
-            .non_terminal()
-            .parse_stream(input)
-            .control_flow()
-        {
+        match self.parser.auto_bt().parse_stream(input).control_flow() {
             ControlFlow::Continue(val) => collector.extend([val]),
             ControlFlow::Break(err) => return Out::from_value(collector),
         }
         for _ in 0..count - 1 {
-            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).control_flow() {
+            if let ControlFlow::Break(err) = int.auto_bt().parse_stream(input).control_flow() {
                 break;
             }
             collector.extend([try_op!(self.parser.parse_stream(input))])
@@ -329,7 +315,7 @@ where
         let Inter(Exact(count), ref int) = self.mode;
         collector.extend([try_op!(self.parser.parse_stream(input))]);
         for _ in 0..count - 1 {
-            try_op!(int.non_terminal().parse_stream(input));
+            try_op!(int.auto_bt().parse_stream(input));
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
         Out::from_value(collector)
@@ -352,11 +338,11 @@ where
         let Inter(Minimum(count), ref int) = self.mode;
         collector.extend([try_op!(self.parser.parse_stream(input))]);
         for _ in 0..count - 1 {
-            try_op!(int.non_terminal().parse_stream(input));
+            try_op!(int.auto_bt().parse_stream(input));
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
         loop {
-            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).control_flow() {
+            if let ControlFlow::Break(err) = int.auto_bt().parse_stream(input).control_flow() {
                 break;
             }
             collector.extend([try_op!(self.parser.parse_stream(input))])
@@ -381,11 +367,11 @@ where
         let Inter(MinimumEOI(count), ref int) = self.mode;
         collector.extend([try_op!(self.parser.parse_stream(input))]);
         for _ in 0..count - 1 {
-            try_op!(int.non_terminal().parse_stream(input));
+            try_op!(int.auto_bt().parse_stream(input));
             collector.extend([try_op!(self.parser.parse_stream(input))])
         }
         loop {
-            if let ControlFlow::Break(err) = int.non_terminal().parse_stream(input).control_flow() {
+            if let ControlFlow::Break(err) = int.auto_bt().parse_stream(input).control_flow() {
                 break;
             }
             if let None = input.peek() {

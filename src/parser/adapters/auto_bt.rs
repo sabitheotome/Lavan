@@ -2,11 +2,16 @@ use crate::parser::prelude::*;
 use crate::response::prelude::*;
 use crate::stream::traits::Stream;
 
-pub struct NonTerminal<Par> {
+/// A parser that automatically backtracks on fail through [`Recoverable`]
+///
+/// This `struct` is created by the [`Parser::auto_bt`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
+pub struct AutoBt<Par> {
     parser: Par,
 }
 
-impl<Par> NonTerminal<Par> {
+impl<Par> AutoBt<Par> {
     pub(crate) fn new(parser: Par) -> Self
     where
         Par: Parser,
@@ -16,7 +21,7 @@ impl<Par> NonTerminal<Par> {
     }
 }
 
-impl<Par> Parser for NonTerminal<Par>
+impl<Par> Parser for AutoBt<Par>
 where
     Par: Parser,
     Par::Output: Recoverable,

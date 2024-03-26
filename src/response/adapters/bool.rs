@@ -125,7 +125,7 @@ impl<Val> Combinable<Option<Val>> for bool {
     }
 }
 
-impl Disjoinable<bool> for bool {
+impl Switchable<bool> for bool {
     type Output = bool;
 
     fn disjoin_response<Fun, Rec, Str>(

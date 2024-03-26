@@ -4,6 +4,11 @@ use crate::response::util::try_op;
 use crate::stream::traits::Stream;
 use std::marker::PhantomData;
 
+/// A parser for flat-mapping [`Fallible`] responses
+///
+/// This `struct` is created by the [`Parser::try_map`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct TryMap<Par, Fun, Val> {
     parser: Par,
     function: Fun,

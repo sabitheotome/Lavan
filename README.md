@@ -1,4 +1,4 @@
-# Lavan Parser - v0.0.4 UNSTABLE
+# Lavan Parser - UNSTABLE
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]

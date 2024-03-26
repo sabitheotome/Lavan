@@ -4,6 +4,11 @@ use crate::response::util::try_op;
 use crate::stream::traits::{Stream, StreamSlice};
 use std::marker::PhantomData;
 
+/// A parser that yields the slice of the operation
+///
+/// This `struct` is created by the [`Parser::slice`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 #[derive(Clone, Copy, Debug)]
 pub struct Slice<'a, Par> {
     pub(super) parser: Par,

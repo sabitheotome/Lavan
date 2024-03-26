@@ -3,16 +3,30 @@ use crate::response::prelude::*;
 use crate::response::util::try_op;
 use crate::stream::traits::Stream;
 
+// TODO: Documentation
 pub struct OrElse<Res, Err>(Res, std::marker::PhantomData<Err>);
 
+/// A parser for filtering through a predicate
+///
+/// This `struct` is created by the [`Parser::filter`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct Filter<Par, Fun, Mod = (), const I: bool = false> {
     parser: Par,
     predicate: Fun,
     mode: Mod,
 }
 
+/// A parser for filtering through an inverted predicate
+///
+/// This `struct` is created by the [`Parser::filter_not`] method on [`Parser`].
+/// See its documentation for more.
 pub type FilterNot<Par, Fun, Mod = ()> = Filter<Par, Fun, Mod, true>;
+
+// TODO: Documentation
 pub type FilterOrElse<Par, Fun, Res, Err> = Filter<Par, Fun, OrElse<Res, Err>>;
+
+// TODO: Documentation
 pub type FilterNotOrElse<Par, Fun, Res, Err> = FilterNot<Par, Fun, OrElse<Res, Err>>;
 
 impl<Par, Fun, const I: bool> Filter<Par, Fun, (), I> {

@@ -2,8 +2,14 @@ use crate::parser::prelude::*;
 use crate::response::prelude::*;
 use crate::stream::traits::Stream;
 
+// TODO: Documentation
 pub type FnMap<Par, Val0, Val1> = Map<Par, fn(Val0) -> Val1>;
 
+/// A parser for mapping the [`Response::Value`] through [`Mappable`]
+///
+/// This `struct` is created by the [`Parser::map`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct Map<Par, Fun> {
     parser: Par,
     function: Fun,

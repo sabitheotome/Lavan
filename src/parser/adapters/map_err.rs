@@ -2,8 +2,14 @@ use crate::parser::prelude::*;
 use crate::response::prelude::*;
 use crate::stream::traits::Stream;
 
+// TODO: Documentation
 pub type FnMapErr<Par, Val0, Val1> = MapErr<Par, fn(Val0) -> Val1>;
 
+/// A parser for mapping the [`Response::Error`] through [`ErrMappable`]
+///
+/// This `struct` is created by the [`Parser::map_err`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct MapErr<Par, Fun> {
     parser: Par,
     function: Fun,

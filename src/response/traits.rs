@@ -40,7 +40,7 @@ where
 }
 
 // TODO: Planned to possibly be removed
-pub trait Disjoinable<Res>: Response
+pub trait Switchable<Res>: Response
 where
     Res: Response,
 {
@@ -110,6 +110,7 @@ where
     }
 }
 
+// TODO: Merge [`Optionable`] into [`Fallible`]
 pub trait Optionable: Recoverable {
     type Output: Response;
     fn opt_response(self) -> Self::Output;
@@ -125,6 +126,7 @@ pub trait Filterable: ValueFunctor {
     fn filter_response(self, predicate: impl FnOnce(&Self::Value) -> bool) -> Self::Output;
 }
 
+// TODO: Possibly planned to be renamed
 pub trait FilterableWithErr<Err>: ValueFunctor {
     type Output: Fallible<Error = Err>;
 

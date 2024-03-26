@@ -96,7 +96,7 @@ impl<Val, Err> Combinable<Unsure<Err>> for Result<Val, Err> {
     }
 }
 
-impl<Val, Err0, Err1> Disjoinable<Result<Val, Err1>> for Result<Val, Err0> {
+impl<Val, Err0, Err1> Switchable<Result<Val, Err1>> for Result<Val, Err0> {
     type Output = Result<Val, (Err0, Err1)>;
 
     fn disjoin_response<Fun, Rec, Str>(

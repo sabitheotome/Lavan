@@ -3,6 +3,11 @@ use crate::parser::util::assoc::err;
 use crate::response::prelude::*;
 use crate::stream::traits::Stream;
 
+/// A parser for combining two parsers through [`Combinable`].
+///
+/// This `struct` is created by the [`Parser::and`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct And<Par0, Par1> {
     parser0: Par0,
     parser1: Par1,

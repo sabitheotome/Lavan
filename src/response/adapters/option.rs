@@ -102,7 +102,7 @@ impl<Val0, Val1> Combinable<Sure<Val1>> for Option<Val0> {
     }
 }
 
-impl<Val> Disjoinable<Option<Val>> for Option<Val> {
+impl<Val> Switchable<Option<Val>> for Option<Val> {
     type Output = Option<Val>;
 
     fn disjoin_response<Fun, Rec, Str>(

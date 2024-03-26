@@ -2,6 +2,11 @@ use crate::parser::prelude::*;
 use crate::response::prelude::*;
 use crate::stream::traits::Stream;
 
+/// A parser for transforming [`Fallible`]s into Infallible responses
+///
+/// This `struct` is created by the [`Parser::opt`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct Opt<Par> {
     parser: Par,
 }
@@ -25,9 +30,6 @@ where
     type Output = <Par::Output as Optionable>::Output;
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        self.parser
-            .non_terminal()
-            .parse_stream(input)
-            .opt_response()
+        self.parser.auto_bt().parse_stream(input).opt_response()
     }
 }

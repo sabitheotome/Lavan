@@ -5,12 +5,12 @@ pub mod parser {
     pub mod adapters {
         pub mod and;
         pub mod as_ref;
+        pub mod auto_bt;
         pub mod eq;
         pub mod filter;
         pub mod ignore;
         pub mod map;
         pub mod map_err;
-        pub mod non_terminal;
         pub mod opt;
         pub mod or;
         pub mod repeat;
@@ -46,5 +46,8 @@ pub mod response {
 pub mod stream {
     pub mod adapters;
     pub mod traits;
+}
+pub mod util {
+    pub mod text;
 }
 pub mod prelude;

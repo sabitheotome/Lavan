@@ -3,16 +3,30 @@ use crate::response::prelude::*;
 use crate::response::util::try_op;
 use crate::stream::traits::Stream;
 
+// TODO: Documentation
 pub struct OrElse<Res, Err>(Res, std::marker::PhantomData<Err>);
 
+/// A parser for checking equallity with a value
+///
+/// This `struct` is created by the [`Parser::eq`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct Eq<Par, Val, Mod = (), const I: bool = false> {
     parser: Par,
     value: Val,
     mode: Mod,
 }
 
+/// A parser for checking inequallity with a value
+///
+/// This `struct` is created by the [`Parser::ne`] method on [`Parser`].
+/// See its documentation for more.
 pub type Ne<Par, Val, Mod = ()> = Eq<Par, Val, Mod, true>;
+
+// TODO: Documentation
 pub type EqOrElse<Par, Val, Res, Err> = Eq<Par, Val, OrElse<Res, Err>>;
+
+// TODO: Documentation
 pub type NeOrElse<Par, Val, Res, Err> = Ne<Par, Val, OrElse<Res, Err>>;
 
 impl<Par, Val, const I: bool> Eq<Par, Val, (), I> {
@@ -29,6 +43,7 @@ impl<Par, Val, const I: bool> Eq<Par, Val, (), I> {
         }
     }
 
+    /// TODO: Documentation
     pub fn or_else<Res, Err>(self, f: Res) -> Eq<Par, Val, OrElse<Res, Err>, I>
     where
         Res: Fn() -> Err,
@@ -42,6 +57,7 @@ impl<Par, Val, const I: bool> Eq<Par, Val, (), I> {
 }
 
 impl<Par, Val, Mod> Eq<Par, Val, Mod> {
+    /// TODO: Documentation
     pub fn not(self) -> Ne<Par, Val, Mod> {
         Eq {
             parser: self.parser,
