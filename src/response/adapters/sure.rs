@@ -163,3 +163,14 @@ impl<Val, Err> FilterableWithErr<Err> for Sure<Val> {
         }
     }
 }
+
+impl<Val, Fun, Out> Bindable<Fun> for Sure<Val>
+where
+    Fun: Fn(Val) -> Out,
+    Out: Response,
+{
+    type Output = Out;
+    fn bind(self, f: &Fun) -> Self::Output {
+        f(self.value())
+    }
+}

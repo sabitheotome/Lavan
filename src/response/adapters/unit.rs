@@ -69,3 +69,14 @@ impl Attachable for () {
         Sure(value)
     }
 }
+
+impl<Fun, Out> Bindable<Fun> for ()
+where
+    Fun: Fn() -> Out,
+    Out: Response,
+{
+    type Output = Out;
+    fn bind(self, f: &Fun) -> Self::Output {
+        f()
+    }
+}

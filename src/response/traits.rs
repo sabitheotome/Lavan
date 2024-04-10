@@ -136,3 +136,8 @@ pub trait FilterableWithErr<Err>: ValueFunctor {
         error: impl FnOnce() -> Err,
     ) -> Self::Output;
 }
+
+pub trait Bindable<Fun> {
+    type Output: Response;
+    fn bind(self, f: &Fun) -> Self::Output;
+}

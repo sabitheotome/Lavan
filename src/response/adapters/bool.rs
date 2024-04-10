@@ -182,3 +182,15 @@ impl Optionable for bool {
 impl Fallible for bool {
     type Infallible = ();
 }
+
+impl<Fun, Out> Bindable<Fun> for bool
+where
+    Self: Combinable<Out>,
+    Fun: Fn() -> Out,
+    Out: Response,
+{
+    type Output = <Self as Combinable<Out>>::Output;
+    fn bind(self, f: &Fun) -> Self::Output {
+        self.combine_response(f)
+    }
+}

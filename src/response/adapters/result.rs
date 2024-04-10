@@ -60,12 +60,15 @@ impl<Val, Err> Combinable<()> for Result<Val, Err> {
     }
 }
 
-impl<Val0, Val1, Err> Combinable<Result<Val1, Err>> for Result<Val0, Err> {
-    type Output = Result<(Val0, Val1), Err>;
+impl<Val0, Val1, Err0, Err1> Combinable<Result<Val1, Err1>> for Result<Val0, Err0>
+where
+    Err1: From<Err0>,
+{
+    type Output = Result<(Val0, Val1), Err1>;
 
     fn combine_response<Fun>(self, response: Fun) -> Self::Output
     where
-        Fun: FnOnce() -> Result<Val1, Err>,
+        Fun: FnOnce() -> Result<Val1, Err1>,
     {
         Ok((self?, response()?))
     }
@@ -172,5 +175,29 @@ impl<Val, Err> FilterableWithErr<Err> for Result<Val, Err> {
             },
             Err(err) => Err(err),
         }
+    }
+}
+
+impl<Val, Err, Fun, Out> Bindable<Fun> for Result<Val, Err>
+where
+    Unsure<Err>: Combinable<Out>,
+    Fun: Fn(Val) -> Out,
+    Out: Response,
+{
+    type Output = <Unsure<Err> as Combinable<Out>>::Output;
+    fn bind(self, f: &Fun) -> Self::Output {
+        let option;
+        let unsure;
+        match self {
+            Ok(value) => {
+                option = Some(value);
+                unsure = Unsure::ok();
+            }
+            Err(error) => {
+                option = None;
+                unsure = Unsure::err(error);
+            }
+        }
+        unsure.combine_response(|| f(option.unwrap()))
     }
 }

@@ -179,3 +179,15 @@ impl<Val, Err> FilterableWithErr<Err> for Option<Val> {
         self.filter(predicate).ok_or_else(error)
     }
 }
+
+impl<Val, Fun, Out> Bindable<Fun> for Option<Val>
+where
+    bool: Combinable<Out>,
+    Fun: Fn(Val) -> Out,
+    Out: Response,
+{
+    type Output = <bool as Combinable<Out>>::Output;
+    fn bind(self, f: &Fun) -> Self::Output {
+        self.is_some().combine_response(|| f(self.unwrap()))
+    }
+}

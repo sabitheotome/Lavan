@@ -202,3 +202,15 @@ impl<Err> Optionable for Unsure<Err> {
 impl<Err> Fallible for Unsure<Err> {
     type Infallible = ();
 }
+
+impl<Err, Fun, Out> Bindable<Fun> for Unsure<Err>
+where
+    Result<(), Err>: Combinable<Out>,
+    Fun: Fn() -> Out,
+    Out: Response,
+{
+    type Output = <Result<(), Err> as Combinable<Out>>::Output;
+    fn bind(self, f: &Fun) -> Self::Output {
+        self.into_result().combine_response(|| f())
+    }
+}
