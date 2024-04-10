@@ -15,7 +15,7 @@ pub mod parser {
         pub mod or;
         pub mod repeat;
         pub mod slice;
-        pub mod try_map;
+        pub mod then;
         pub(crate) mod todo {
             pub mod delimited;
             pub mod owned;
