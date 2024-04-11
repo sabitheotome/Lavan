@@ -25,8 +25,17 @@ pub trait Response {
     fn control_flow(self) -> ControlFlow<Self::Error, Self::Value>;
 }
 
-pub trait ValueFunctor: Response {}
-pub trait ErrorFunctor: Response {}
+pub trait ValueFunctor: Response {
+    fn unwrap(self) -> Self::Value
+    where
+        Self::Error: std::fmt::Debug;
+}
+
+pub trait ErrorFunctor: Response {
+    fn unwrap_err(self) -> Self::Error
+    where
+        Self::Value: std::fmt::Debug;
+}
 
 pub trait Combinable<Res>: Response
 where
