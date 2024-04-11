@@ -13,13 +13,13 @@ pub mod parser {
         pub mod map_err;
         pub mod opt;
         pub mod or;
+        pub mod parse_str;
         pub mod repeat;
         pub mod slice;
         pub mod then;
         pub(crate) mod todo {
             pub mod delimited;
             pub mod owned;
-            pub mod parse_str;
             pub mod spanned;
             pub mod try_with;
             pub mod unwrapped;
