@@ -56,7 +56,11 @@ impl<T> Response for Sure<T> {
     }
 }
 
-impl<T> ValueFunctor for Sure<T> {}
+impl<T> ValueFunctor for Sure<T> {
+    fn unwrap(self) -> Self::Value {
+        self.value()
+    }
+}
 
 impl<Val> Combinable<()> for Sure<Val> {
     type Output = Self;

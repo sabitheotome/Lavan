@@ -48,7 +48,11 @@ impl<T> Response for Option<T> {
     }
 }
 
-impl<T> ValueFunctor for Option<T> {}
+impl<T> ValueFunctor for Option<T> {
+    fn unwrap(self) -> Self::Value {
+        self.unwrap()
+    }
+}
 
 impl<Val> Combinable<()> for Option<Val> {
     type Output = Self;

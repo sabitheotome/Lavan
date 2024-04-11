@@ -43,9 +43,23 @@ impl<T, E> Response for Result<T, E> {
     }
 }
 
-impl<T, E> ValueFunctor for Result<T, E> {}
+impl<T, E> ValueFunctor for Result<T, E> {
+    fn unwrap(self) -> Self::Value
+    where
+        Self::Error: std::fmt::Debug,
+    {
+        self.unwrap()
+    }
+}
 
-impl<T, E> ErrorFunctor for Result<T, E> {}
+impl<T, E> ErrorFunctor for Result<T, E> {
+    fn unwrap_err(self) -> Self::Error
+    where
+        Self::Value: std::fmt::Debug,
+    {
+        self.unwrap_err()
+    }
+}
 
 impl<Val, Err> Combinable<()> for Result<Val, Err> {
     type Output = Self;
