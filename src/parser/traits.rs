@@ -13,6 +13,7 @@ use super::adapters::{
     repeat::{mode::*, *},
     slice::Slice,
     then::Then,
+    unwrapped::Unwrapped,
 };
 use super::util::assoc::{err, val};
 use crate::stream::traits::Stream;
@@ -180,6 +181,16 @@ pub trait Parser {
         T: std::str::FromStr,
     {
         ParseStr::new(self)
+    }
+
+    // TODO: Documentation
+    fn unwrapped(self) -> Unwrapped<Self>
+    where
+        Self: Sized,
+        Self::Output: Fallible + ValueFunctor,
+        <Self::Output as Response>::Error: std::fmt::Debug,
+    {
+        Unwrapped::new(self)
     }
 
     // TODO: Documentation
