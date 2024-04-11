@@ -11,7 +11,7 @@ use super::adapters::{
     or::Or,
     repeat::{mode::*, *},
     slice::Slice,
-    try_map::TryMap,
+    then::Then,
 };
 use super::util::assoc::{err, val};
 use crate::stream::traits::Stream;
@@ -61,13 +61,12 @@ pub trait Parser {
     }
 
     // TODO: Documentation
-    fn try_map<Fun, Val>(&self, f: Fun) -> TryMap<AsRef<Self>, Fun, Val>
+    fn then<Fun>(self, f: Fun) -> Then<Self, Fun>
     where
         Self: Sized,
-        Self::Output: ValueFunctor + Fallible,
-        Fun: Fn(val![Self]) -> val![Self<Val>],
+        Self::Output: Bindable<Fun>,
     {
-        TryMap::new(self.as_ref(), f)
+        Then::new(self, f)
     }
 
     // TODO: Documentation
