@@ -28,9 +28,12 @@ pub trait Parser {
     /// # Examples
     /// Basic usage:
     /// ```
-    /// let stream = ("Hello, World!", 0);
+    /// use lavan::parser::traits::Parser;
+    /// use lavan::parser::sources::any;
+    ///
+    /// let mut stream = ("Hello, World!", 0);
     /// let first_char = any().parse_stream(&mut stream);
-    /// assert_eq!(first_char, "H");
+    /// assert_eq!(first_char, Some('H'));
     /// ```
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output;
 
@@ -83,20 +86,23 @@ pub trait Parser {
     /// # Examples
     /// Basic usage:
     /// ```
-    /// let input = "123!"
-    /// let mut not_auto_stream = (input, 0);
-    /// let mut auto_stream = (input, 0);
+    /// use lavan::parser::traits::Parser;
+    /// use lavan::parser::sources::any_if;
     ///
-    /// let not_auto = any_if(|c: char| c.is_ascii_digit());
-    /// let auto = not_auto.as_ref().auto_bt();
+    /// let input = "not a digit";
+    /// let mut stream = (input, 0);
+    /// let mut stream_auto = (input, 0);
     ///
-    /// not_auto.parse_stream(&mut not_auto_stream);
-    /// // Stream index is not equal to 0
-    /// assert_ne!(not_auto_stream.1, 0);
-    ///     
-    /// auto.parse_stream(&mut auto_stream);
-    /// // Stream index is equal to 0
-    /// assert_eq!(auto_stream.1, 0);
+    /// let parse_a_digit = any_if(|c: &char| c.is_ascii_digit());
+    /// let parse_a_digit_auto = any_if(|c: &char| c.is_ascii_digit()).auto_bt();
+    ///
+    /// parse_a_digit.parse_stream(&mut stream);
+    /// parse_a_digit_auto.parse_stream(&mut stream_auto);
+    ///
+    /// // WITHOUT AUTO_BT: Stream index is equal to 1
+    /// assert_eq!(stream.1, 1);
+    /// // WITH AUTO_BT: Stream index is equal to 0
+    /// assert_eq!(stream_auto.1, 0);
     /// ```
     fn auto_bt(self) -> AutoBt<Self>
     where
