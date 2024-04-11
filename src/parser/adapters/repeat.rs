@@ -69,6 +69,33 @@ impl<Par, Mod> Repeater<Par, Mod> {
             collector: PhantomData,
         }
     }
+
+    #[inline]
+    pub fn collect<T>(self) -> Repeater<Par, Mod, T>
+    where
+        T: Default + Extend<<Par::Output as Response>::Value>,
+        Par: Parser,
+        Par::Output: ValueFunctor,
+    {
+        Repeater {
+            parser: self.parser,
+            mode: self.mode,
+            collector: PhantomData,
+        }
+    }
+
+    #[inline]
+    pub fn to_vec(self) -> Repeater<Par, Mod, Vec<<Par::Output as Response>::Value>>
+    where
+        Par: Parser,
+        Par::Output: ValueFunctor,
+    {
+        Repeater {
+            parser: self.parser,
+            mode: self.mode,
+            collector: PhantomData,
+        }
+    }
 }
 
 // Non-interspersed
@@ -394,34 +421,6 @@ impl<Par, Mod, Col> Repeater<Par, Mod, Col> {
     }
 }
 
-impl<Par, Mod> Repeater<Par, Mod, ()> {
-    #[inline]
-    pub fn collect<T>(self) -> Repeater<Par, Mod, T>
-    where
-        T: Default + Extend<<Par::Output as Response>::Value>,
-        Par: Parser,
-        Par::Output: ValueFunctor,
-    {
-        Repeater {
-            parser: self.parser,
-            mode: self.mode,
-            collector: PhantomData,
-        }
-    }
-
-    #[inline]
-    pub fn to_vec(self) -> Repeater<Par, Mod, Vec<<Par::Output as Response>::Value>>
-    where
-        Par: Parser,
-        Par::Output: ValueFunctor,
-    {
-        Repeater {
-            parser: self.parser,
-            mode: self.mode,
-            collector: PhantomData,
-        }
-    }
-}
 
 impl<Par, Col> Repeat<Par, Col> {
     #[inline]
