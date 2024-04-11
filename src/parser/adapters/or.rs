@@ -35,8 +35,14 @@ impl<Par0, Par1> Or<Par0, Par1> {
         Par1: Parser,
         Par1::Output: 'a + ValueFunctor,
     {
-        let parser0 = self.parser0.map(Either::<val![Par0], val![Par1]>::Left);
-        let parser1 = self.parser1.map(Either::<val![Par0], val![Par1]>::Right);
+        let parser0 = self
+            .parser0
+            .as_ref()
+            .map(Either::<val![Par0], val![Par1]>::Left);
+        let parser1 = self
+            .parser1
+            .as_ref()
+            .map(Either::<val![Par0], val![Par1]>::Right);
         Or { parser0, parser1 }
     }
 }

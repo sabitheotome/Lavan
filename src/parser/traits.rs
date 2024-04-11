@@ -43,21 +43,21 @@ pub trait Parser {
     }
 
     // TODO: Documentation
-    fn map<Fun>(&self, f: Fun) -> Map<AsRef<Self>, Fun>
+    fn map<Fun>(self, f: Fun) -> Map<Self, Fun>
     where
         Self: Sized,
         Self::Output: Mappable<Fun>,
     {
-        Map::new(self.as_ref(), f)
+        Map::new(self, f)
     }
 
     // TODO: Documentation
-    fn map_err<Fun>(&self, f: Fun) -> MapErr<AsRef<Self>, Fun>
+    fn map_err<Fun>(self, f: Fun) -> MapErr<Self, Fun>
     where
         Self: Sized,
         Self::Output: ErrMappable<Fun>,
     {
-        MapErr::new(self.as_ref(), f)
+        MapErr::new(self, f)
     }
 
     // TODO: Documentation
@@ -70,15 +70,14 @@ pub trait Parser {
     }
 
     // TODO: Documentation
-    fn ignore(&self) -> Ignore<AsRef<Self>>
+    fn ignore(self) -> Ignore<Self>
     where
         Self: Sized,
         Self::Output: Ignorable,
     {
-        Ignore::new(self.as_ref())
+        Ignore::new(self)
     }
 
-    fn auto_bt(&self) -> AutoBt<AsRef<Self>>
     /// Automatically backtracks if the parsing has failed
     ///
     /// # Examples
@@ -99,44 +98,45 @@ pub trait Parser {
     /// // Stream index is equal to 0
     /// assert_eq!(auto_stream.1, 0);
     /// ```
+    fn auto_bt(self) -> AutoBt<Self>
     where
         Self: Sized,
         Self::Output: Recoverable,
     {
-        AutoBt::new(self.as_ref())
+        AutoBt::new(self)
     }
 
     // TODO: Documentation
-    fn opt(&self) -> Opt<AsRef<Self>>
+    fn opt(self) -> Opt<Self>
     where
         Self: Sized,
         Self::Output: Optionable,
     {
-        Opt::new(self.as_ref())
+        Opt::new(self)
     }
 
     // TODO: Documentation
-    fn slice<'a>(&self) -> Slice<'a, AsRef<Self>>
+    fn slice<'a>(self) -> Slice<'a, Self>
     where
         Self: Sized,
         Self::Input: StreamSlice<'a>,
         Self::Output: Response<Value = ()>,
     {
-        Slice::new(self.as_ref())
+        Slice::new(self)
     }
 
     // TODO: Documentation
-    fn filter<Fun>(&self, f: Fun) -> Filter<AsRef<Self>, Fun>
+    fn filter<Fun>(self, f: Fun) -> Filter<Self, Fun>
     where
         Self: Sized,
         Self::Output: ValueFunctor,
         Fun: Fn(&<Self::Output as Response>::Value) -> bool,
     {
-        Filter::new(self.as_ref(), f)
+        Filter::new(self, f)
     }
 
     // TODO: Documentation
-    fn filter_not<Fun>(&self, f: Fun) -> FilterNot<AsRef<Self>, Fun>
+    fn filter_not<Fun>(self, f: Fun) -> FilterNot<Self, Fun>
     where
         Self: Sized,
         Self::Output: ValueFunctor,
@@ -146,17 +146,17 @@ pub trait Parser {
     }
 
     // TODO: Documentation
-    fn eq<Val>(&self, v: Val) -> Eq<AsRef<Self>, Val>
+    fn eq<Val>(self, v: Val) -> Eq<Self, Val>
     where
         Self: Sized,
         Self::Output: ValueFunctor,
         <Self::Output as Response>::Value: PartialEq<Val>,
     {
-        Eq::new(self.as_ref(), v)
+        Eq::new(self, v)
     }
 
     // TODO: Documentation
-    fn ne<Val>(&self, v: Val) -> Ne<AsRef<Self>, Val>
+    fn ne<Val>(self, v: Val) -> Ne<Self, Val>
     where
         Self: Sized,
         Self::Output: ValueFunctor,
@@ -166,78 +166,78 @@ pub trait Parser {
     }
 
     // TODO: Documentation
-    fn and<Par>(&self, parser: Par) -> And<AsRef<Self>, Par>
+    fn and<Par>(self, parser: Par) -> And<Self, Par>
     where
         Self: Sized,
         Self::Output: Combinable<Par::Output>,
         Par: Parser<Input = Self::Input>,
     {
-        And::new(self.as_ref(), parser)
+        And::new(self, parser)
     }
 
     // TODO: Documentation
-    fn or<Par>(&self, parser: Par) -> Or<AsRef<Self>, Par>
+    fn or<Par>(self, parser: Par) -> Or<Self, Par>
     where
         Self: Sized,
         Self::Output: Switchable<Par::Output>,
         Par: Parser<Input = Self::Input>,
     {
-        Or::new(self.as_ref(), parser)
+        Or::new(self, parser)
     }
 
     // TODO: Documentation
-    fn repeat(&self) -> Repeat<AsRef<Self>>
+    fn repeat(self) -> Repeat<Self>
     where
         Self: Sized,
         Self::Output: Recoverable + Fallible,
     {
-        Repeat::new(self.as_ref(), UntilErr(()))
+        Repeat::new(self, UntilErr(()))
     }
 
     // TODO: Documentation
-    fn repeat_eoi(&self) -> RepeatEOI<AsRef<Self>>
+    fn repeat_eoi(self) -> RepeatEOI<Self>
     where
         Self: Sized,
     {
-        RepeatEOI::new(self.as_ref(), UntilEOI(()))
+        RepeatEOI::new(self, UntilEOI(()))
     }
 
     // TODO: Documentation
     // TODO: usize -> NonZeroUsize
-    fn repeat_min(&self, count: usize) -> RepeatMin<AsRef<Self>>
+    fn repeat_min(self, count: usize) -> RepeatMin<Self>
     where
         Self: Sized,
     {
         assert!(count >= 1);
-        RepeatMin::new(self.as_ref(), Minimum(count))
+        RepeatMin::new(self, Minimum(count))
     }
 
     // TODO: Documentation
-    fn repeat_min_eoi(&self, count: usize) -> RepeatMinEOI<AsRef<Self>>
+    fn repeat_min_eoi(self, count: usize) -> RepeatMinEOI<Self>
     where
         Self: Sized,
     {
         assert!(count >= 1);
-        RepeatMinEOI::new(self.as_ref(), MinimumEOI(count))
+        RepeatMinEOI::new(self, MinimumEOI(count))
     }
 
     // TODO: Documentation
-    fn repeat_max(&self, count: usize) -> RepeatMax<AsRef<Self>>
+    fn repeat_max(self, count: usize) -> RepeatMax<Self>
     where
         Self: Sized,
         Self::Output: Fallible,
     {
         assert!(count >= 1);
-        RepeatMax::new(self.as_ref(), Maximum(count))
+        RepeatMax::new(self, Maximum(count))
     }
 
     // TODO: Documentation
-    fn repeat_exact(&self, count: usize) -> RepeatExact<AsRef<Self>>
+    fn repeat_exact(self, count: usize) -> RepeatExact<Self>
     where
         Self: Sized,
     {
         assert!(count >= 1);
-        RepeatExact::new(self.as_ref(), Exact(count))
+        RepeatExact::new(self, Exact(count))
     }
 }
 
@@ -255,8 +255,8 @@ impl<Out: Response, Str: Stream> Parser for fn(&mut Str) -> Out {
     type Input = Str;
     type Output = Out;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        (self.1)(&self.0, input)
+    fn parse_stream(self, input: &mut Self::Input) -> Self::Output {
+        (self.1)(self.0, input)
     }
 }*/
 

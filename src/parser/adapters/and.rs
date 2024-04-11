@@ -36,9 +36,13 @@ impl<Par0, Par1> And<Par0, Par1> {
         use either::Either;
 
         And {
-            parser0: self.parser0.map_err(Either::<err![Par0], err![Par1]>::Left),
+            parser0: self
+                .parser0
+                .as_ref()
+                .map_err(Either::<err![Par0], err![Par1]>::Left),
             parser1: self
                 .parser1
+                .as_ref()
                 .map_err(Either::<err![Par0], err![Par1]>::Right),
         }
     }

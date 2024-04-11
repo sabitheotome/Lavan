@@ -30,6 +30,10 @@ where
     type Output = <Par::Output as Optionable>::Output;
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        self.parser.auto_bt().parse_stream(input).opt_response()
+        self.parser
+            .as_ref()
+            .auto_bt()
+            .parse_stream(input)
+            .opt_response()
     }
 }
