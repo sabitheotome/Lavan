@@ -17,12 +17,12 @@ pub mod parser {
         pub mod repeat;
         pub mod slice;
         pub mod then;
+        pub mod unwrapped;
         pub(crate) mod todo {
             pub mod delimited;
             pub mod owned;
             pub mod spanned;
             pub mod try_with;
-            pub mod unwrapped;
         }
     }
     pub(crate) mod prelude;

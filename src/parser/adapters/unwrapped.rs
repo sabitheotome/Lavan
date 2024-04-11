@@ -4,7 +4,7 @@ use crate::parser::prelude::*;
 use crate::response::prelude::*;
 use crate::stream::traits::Stream;
 
-/// TODO
+/// Unwrap the inner value contained in the response, converting it to a infallible response
 ///
 /// This `struct` is created by the [`Parser::unwrapped`] method on [`Parser`].
 /// See its documentation for more.
@@ -16,7 +16,8 @@ impl<Par> Unwrapped<Par> {
     pub(crate) fn new(parser: Par) -> Self
     where
         Par: Parser,
-        Par::Output: Debug,
+        Par::Output: Fallible + ValueFunctor,
+        <Par::Output as Response>::Error: std::fmt::Debug,
     {
         Self { parser }
     }
@@ -25,12 +26,13 @@ impl<Par> Unwrapped<Par> {
 impl<Par> Parser for Unwrapped<Par>
 where
     Par: Parser,
-    Par::Output: Debug,
+    Par::Output: Fallible + ValueFunctor,
+    <Par::Output as Response>::Error: std::fmt::Debug,
 {
     type Input = Par::Input;
-    type Output = ();
+    type Output = <Par::Output as Fallible>::Infallible;
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        todo!()
+        <Par::Output as Fallible>::Infallible::from_value(self.parser.parse_stream(input).unwrap())
     }
 }
