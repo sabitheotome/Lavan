@@ -79,6 +79,15 @@ impl<T> Response for Unsure<T> {
     }
 }
 
+impl<Err> ErrorFunctor for Unsure<Err> {
+    fn unwrap_err(self) -> Self::Error
+    where
+        Self::Value: std::fmt::Debug,
+    {
+        self.into_result().unwrap_err()
+    }
+}
+
 impl<Fun, Val, Err> Mappable<Fun> for Unsure<Err>
 where
     Fun: Fn() -> Val,
