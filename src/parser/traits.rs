@@ -83,8 +83,27 @@ pub trait Parser {
         Ignore::new(self.as_ref())
     }
 
-    // TODO: Documentation
     fn auto_bt(&self) -> AutoBt<AsRef<Self>>
+    /// Automatically backtracks if the parsing has failed
+    ///
+    /// # Examples
+    /// Basic usage:
+    /// ```
+    /// let input = "123!"
+    /// let mut not_auto_stream = (input, 0);
+    /// let mut auto_stream = (input, 0);
+    ///
+    /// let not_auto = any_if(|c: char| c.is_ascii_digit());
+    /// let auto = not_auto.as_ref().auto_bt();
+    ///
+    /// not_auto.parse_stream(&mut not_auto_stream);
+    /// // Stream index is not equal to 0
+    /// assert_ne!(not_auto_stream.1, 0);
+    ///     
+    /// auto.parse_stream(&mut auto_stream);
+    /// // Stream index is equal to 0
+    /// assert_eq!(auto_stream.1, 0);
+    /// ```
     where
         Self: Sized,
         Self::Output: Recoverable,
