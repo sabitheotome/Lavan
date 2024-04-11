@@ -17,10 +17,6 @@ use super::util::assoc::{err, val};
 use crate::stream::traits::Stream;
 use crate::{response::prelude::*, stream::traits::StreamSlice};
 
-fn a() {
-    //let _ = std::iter::Iterator::next(&mut self);
-}
-
 pub trait Parser {
     /// The input [`Stream`] iterated by the parser
     type Input: Stream;
