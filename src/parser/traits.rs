@@ -9,6 +9,7 @@ use super::adapters::{
     map_err::MapErr,
     opt::Opt,
     or::Or,
+    parse_str::ParseStr,
     repeat::{mode::*, *},
     slice::Slice,
     then::Then,
@@ -169,6 +170,16 @@ pub trait Parser {
         <Self::Output as Response>::Value: PartialEq<Val>,
     {
         self.eq(v).not()
+    }
+
+    // TODO: Documentation
+    fn parse_str<T>(self) -> ParseStr<Self, T>
+    where
+        Self: Sized,
+        Self::Output: Bindable<fn(&str) -> Result<T, T::Err>>,
+        T: std::str::FromStr,
+    {
+        ParseStr::new(self)
     }
 
     // TODO: Documentation
