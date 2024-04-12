@@ -14,6 +14,7 @@ pub mod parser {
         pub mod map_err;
         pub mod opt;
         pub mod or;
+        pub mod owned;
         pub mod parse_str;
         pub mod repeat;
         pub mod slice;
