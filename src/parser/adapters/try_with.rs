@@ -9,18 +9,19 @@ use crate::stream::traits::Stream;
 /// This `struct` is created by the [`Parser::try_with`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
-struct TryWith<Par0, Par1, Fun> {
+pub struct TryWith<Par0, Par1, Fun> {
     parser0: Par0,
     parser1: Par1,
     function: Fun,
 }
 
 impl<Par0, Par1, Fun> TryWith<Par0, Par1, Fun> {
-    pub(crate) fn new(parser0: Par0, parser1: Par1, function: Fun) -> Self
+    pub(crate) fn new<Out>(parser0: Par0, parser1: Par1, function: Fun) -> Self
     where
-        Par0: Parser,
-        Par1: Parser<Input = Par0::Input>,
-        Par0::Output: Combinable<Par1::Output>,
+        Par0: Parser<Output = Out>,
+        Par1: Parser<Output = Out, Input = Par0::Input>,
+        Fun: Fn(Out::Value, Out::Value) -> std::ops::ControlFlow<Out::Value, Out::Value>,
+        Out: Response + Fallible,
     {
         Self {
             parser0,
