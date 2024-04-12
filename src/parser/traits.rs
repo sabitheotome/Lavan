@@ -16,6 +16,7 @@ use super::adapters::{
     slice::Slice,
     spanned::Spanned,
     then::Then,
+    try_with::TryWith,
     unwrapped::Unwrapped,
 };
 use super::util::assoc::{err, val};
@@ -246,6 +247,18 @@ pub trait Parser {
         Par: Parser<Input = Self::Input>,
     {
         Or::new(self, parser)
+    }
+
+    // TODO: Documentation
+    fn try_with<Par, Fun, Out>(self, parser: Par, function: Fun) -> TryWith<Self, Par, Fun>
+    where
+        Self: Sized,
+        Self: Parser<Output = Out>,
+        Par: Parser<Output = Out, Input = Self::Input>,
+        Fun: Fn(Out::Value, Out::Value) -> std::ops::ControlFlow<Out::Value, Out::Value>,
+        Out: Response + Fallible,
+    {
+        TryWith::new(self, parser, function)
     }
 
     // TODO: Documentation
