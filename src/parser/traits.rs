@@ -249,7 +249,49 @@ pub trait Parser {
         Or::new(self, parser)
     }
 
-    // TODO: Documentation
+    /// Try making a variant with another parser. Essentially, it tries
+    /// to run the second parser, automatically backtracking in case of
+    /// failure. After that, the provided closure will run, allowing for
+    /// condition checking and conversions.
+    ///
+    /// Exiting the closure with [Continue][std::ops::ControlFlow::Continue]
+    /// will consume all tokens.
+    ///
+    /// However, exiting the closure with [Break][std::ops::ControlFlow::Break]
+    /// will backtrack to the moment before the execution of the second parser.
+    ///
+    /// This operation can be useful if you want to make left-recursive variants
+    /// of your structure.
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    /// use HatOrNoHat::*;
+    ///
+    /// #[derive(PartialEq, Debug, Clone)]
+    /// enum HatOrNoHat {
+    ///     No,
+    ///     Hat,
+    ///     NoHat,
+    /// }
+    ///
+    /// let input: &[HatOrNoHat] = &[Hat, Hat, No, Hat, Hat, No, Hat, No, Hat, Hat, No];
+    /// let expected_out = [Hat, Hat, NoHat, Hat, NoHat, NoHat, Hat, No];
+    ///
+    /// let output = any()
+    ///     .try_with(any(), |a: HatOrNoHat, b: HatOrNoHat| {
+    ///         if a == No && b == Hat {
+    ///             std::ops::ControlFlow::Continue(NoHat)
+    ///         } else {
+    ///             std::ops::ControlFlow::Break(a)
+    ///         }
+    ///     })
+    ///     .repeat()
+    ///     .to_vec()
+    ///     .parse_stream(&mut (input, 0));
+    /// assert_eq!(output.value(), expected_out);
+    //```
     fn try_with<Par, Fun, Out0, Out1>(self, parser: Par, function: Fun) -> TryWith<Self, Par, Fun>
     where
         Self: Sized + Parser<Output = Out0>,
