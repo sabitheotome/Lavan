@@ -250,13 +250,13 @@ pub trait Parser {
     }
 
     // TODO: Documentation
-    fn try_with<Par, Fun, Out>(self, parser: Par, function: Fun) -> TryWith<Self, Par, Fun>
+    fn try_with<Par, Fun, Out0, Out1>(self, parser: Par, function: Fun) -> TryWith<Self, Par, Fun>
     where
-        Self: Sized,
-        Self: Parser<Output = Out>,
-        Par: Parser<Output = Out, Input = Self::Input>,
-        Fun: Fn(Out::Value, Out::Value) -> std::ops::ControlFlow<Out::Value, Out::Value>,
-        Out: Response + Fallible,
+        Self: Sized + Parser<Output = Out0>,
+        Par: Parser<Output = Out1, Input = Self::Input>,
+        Fun: Fn(Out0::Value, Out1::Value) -> std::ops::ControlFlow<Out0::Value, Out0::Value>,
+        Out0: Response,
+        Out1: Response<Error = Out0::Error>,
     {
         TryWith::new(self, parser, function)
     }

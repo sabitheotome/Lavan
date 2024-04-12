@@ -16,12 +16,13 @@ pub struct TryWith<Par0, Par1, Fun> {
 }
 
 impl<Par0, Par1, Fun> TryWith<Par0, Par1, Fun> {
-    pub(crate) fn new<Out>(parser0: Par0, parser1: Par1, function: Fun) -> Self
+    pub(crate) fn new<Out0, Out1>(parser0: Par0, parser1: Par1, function: Fun) -> Self
     where
-        Par0: Parser<Output = Out>,
-        Par1: Parser<Output = Out, Input = Par0::Input>,
-        Fun: Fn(Out::Value, Out::Value) -> std::ops::ControlFlow<Out::Value, Out::Value>,
-        Out: Response + Fallible,
+        Par0: Parser<Output = Out0>,
+        Par1: Parser<Output = Out1, Input = Par0::Input>,
+        Fun: Fn(Out0::Value, Out1::Value) -> std::ops::ControlFlow<Out0::Value, Out0::Value>,
+        Out0: Response,
+        Out1: Response<Error = Out0::Error>,
     {
         Self {
             parser0,
@@ -31,15 +32,16 @@ impl<Par0, Par1, Fun> TryWith<Par0, Par1, Fun> {
     }
 }
 
-impl<Par0, Par1, Fun, Out> Parser for TryWith<Par0, Par1, Fun>
+impl<Par0, Par1, Fun, Out0, Out1> Parser for TryWith<Par0, Par1, Fun>
 where
-    Par0: Parser<Output = Out>,
-    Par1: Parser<Output = Out, Input = Par0::Input>,
-    Fun: Fn(Out::Value, Out::Value) -> std::ops::ControlFlow<Out::Value, Out::Value>,
-    Out: Response + Fallible,
+    Par0: Parser<Output = Out0>,
+    Par1: Parser<Output = Out1, Input = Par0::Input>,
+    Fun: Fn(Out0::Value, Out1::Value) -> std::ops::ControlFlow<Out0::Value, Out0::Value>,
+    Out0: Response,
+    Out1: Response<Error = Out0::Error>,
 {
     type Input = Par0::Input;
-    type Output = Par0::Output;
+    type Output = Out0;
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         use std::ops::ControlFlow::{Break, Continue};
@@ -47,15 +49,15 @@ where
         let offset = input.offset();
         match self.parser1.parse_stream(input).control_flow() {
             Continue(value1) => match (self.function)(value0, value1) {
-                Continue(new) => Par0::Output::from_value(new),
+                Continue(new) => Out0::from_value(new),
                 Break(original) => {
                     *input.offset_mut() = offset;
-                    Par0::Output::from_value(original)
+                    Out0::from_value(original)
                 }
             },
             Break(_error) => {
                 *input.offset_mut() = offset;
-                Par0::Output::from_value(value0)
+                Out0::from_value(value0)
             }
         }
     }
