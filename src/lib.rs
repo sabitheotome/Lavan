@@ -6,6 +6,7 @@ pub mod parser {
         pub mod and;
         pub mod as_ref;
         pub mod auto_bt;
+        pub mod delimited;
         pub mod eq;
         pub mod filter;
         pub mod ignore;
