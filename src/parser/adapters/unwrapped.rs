@@ -8,6 +8,7 @@ use crate::stream::traits::Stream;
 ///
 /// This `struct` is created by the [`Parser::unwrapped`] method on [`Parser`].
 /// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct Unwrapped<Par> {
     parser: Par,
 }
