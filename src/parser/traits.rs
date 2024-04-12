@@ -14,6 +14,7 @@ use super::adapters::{
     parse_str::ParseStr,
     repeat::{mode::*, *},
     slice::Slice,
+    spanned::Spanned,
     then::Then,
     unwrapped::Unwrapped,
 };
@@ -203,6 +204,15 @@ pub trait Parser {
         <Self::Output as Response>::Value: std::borrow::ToOwned,
     {
         Owned::new(self)
+    }
+
+    // TODO: Documentation
+    fn spanned(self) -> Spanned<Self>
+    where
+        Self: Sized,
+        Self::Output: ValueFunctor,
+    {
+        Spanned::new(self)
     }
 
     // TODO: Documentation
