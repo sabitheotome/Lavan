@@ -20,6 +20,7 @@ pub mod parser {
         pub mod slice;
         pub mod spanned;
         pub mod then;
+        pub mod try_with;
         pub mod unwrapped;
     }
     pub(crate) mod prelude;
