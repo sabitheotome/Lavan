@@ -18,6 +18,7 @@ pub mod parser {
         pub mod parse_str;
         pub mod repeat;
         pub mod slice;
+        pub mod spanned;
         pub mod then;
         pub mod unwrapped;
     }
