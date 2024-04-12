@@ -62,3 +62,37 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn doc_example() {
+        use crate::prelude::*;
+        use HatOrNoHat::*;
+
+        #[derive(PartialEq, Debug, Clone)]
+        enum HatOrNoHat {
+            No,
+            Hat,
+            NoHat,
+        }
+
+        let input: &[HatOrNoHat] = &[Hat, Hat, No, Hat, Hat, No, Hat, No, Hat, Hat, No];
+        let expected_out = [Hat, Hat, NoHat, Hat, NoHat, NoHat, Hat, No];
+
+        let output = any()
+            .try_with(any(), |a: HatOrNoHat, b: HatOrNoHat| {
+                if a == No && b == Hat {
+                    Continue(NoHat)
+                } else {
+                    Break(a)
+                }
+            })
+            .repeat()
+            .to_vec()
+            .parse_stream(&mut (input, 0));
+
+        assert_eq!(output.value(), expected_out);
+    }
+}
