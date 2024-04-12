@@ -2,6 +2,7 @@ use super::adapters::{
     and::And,
     as_ref::AsRef,
     auto_bt::AutoBt,
+    delimited::Delimited,
     eq::{Eq, Ne},
     filter::{Filter, FilterNot},
     ignore::Ignore,
@@ -191,6 +192,19 @@ pub trait Parser {
         <Self::Output as Response>::Error: std::fmt::Debug,
     {
         Unwrapped::new(self)
+    }
+
+    // TODO: Documentation
+    fn delimited<Del, First, Second>(self, open: Del, close: Del) -> Delimited<Self, Del>
+    where
+        Self: Sized,
+        Self::Input: Stream<Item = Del>,
+        Del: PartialEq,
+        Option<Del>: Combinable<Self::Output, Output = First>,
+        First: Combinable<Option<Del>, Output = Second>,
+        Second: Response,
+    {
+        Delimited::new(self, open, close)
     }
 
     // TODO: Documentation
