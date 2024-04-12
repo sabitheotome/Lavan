@@ -10,6 +10,7 @@ use super::adapters::{
     map_err::MapErr,
     opt::Opt,
     or::Or,
+    owned::Owned,
     parse_str::ParseStr,
     repeat::{mode::*, *},
     slice::Slice,
@@ -192,6 +193,16 @@ pub trait Parser {
         <Self::Output as Response>::Error: std::fmt::Debug,
     {
         Unwrapped::new(self)
+    }
+
+    // TODO: Documentation
+    fn owned(self) -> Owned<Self>
+    where
+        Self: Sized,
+        Self::Output: ValueFunctor,
+        <Self::Output as Response>::Value: std::borrow::ToOwned,
+    {
+        Owned::new(self)
     }
 
     // TODO: Documentation
