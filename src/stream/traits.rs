@@ -35,7 +35,7 @@ pub trait Stream {
         T::parse(self)
     }
 
-    fn eval<Par>(&mut self, parser: Par) -> Par::Output
+    fn evaluate<Par>(&mut self, parser: Par) -> Par::Output
     where
         Self: Sized,
         Par: Parser<Input = Self>,
