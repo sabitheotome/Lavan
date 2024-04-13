@@ -1,5 +1,21 @@
 use crate::parser::traits::{Parse, Parser};
 
+pub trait TokenSequence {
+    type Item;
+    type Peek<'a>
+    where
+        Self: 'a;
+    type Offset;
+
+    fn nth(&self, offset: Self::Offset) -> Option<Self::Item>;
+    fn peek_nth(&self, offset: Self::Offset) -> Option<Self::Peek<'_>>;
+}
+
+pub trait TokenSlice<'a>: TokenSequence {
+    type Slice: 'a;
+    fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice;
+}
+
 pub trait Stream {
     type Item;
     type Peek<'a>
