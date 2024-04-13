@@ -107,8 +107,7 @@ pub trait Parser {
     /// # Examples
     /// Basic usage:
     /// ```
-    /// use lavan::parser::traits::Parser;
-    /// use lavan::parser::sources::any_if;
+    /// use lavan::prelude::*;
     ///
     /// let input = "not a digit";
     /// let mut stream = (input, 0);
