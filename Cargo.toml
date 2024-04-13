@@ -4,7 +4,6 @@ version = "0.0.3-a-unstable"
 authors = ["Sabi <sabitheotome@gmail.com>"]
 description = "Lavan is a parser library"
 license = "GPL-3.0"
-license-file = "LICENSE"
 repository = "https://github.com/sabitheotome/lavan"
 edition = "2021"
 
