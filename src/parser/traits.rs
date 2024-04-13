@@ -20,7 +20,7 @@ use super::adapters::{
     unwrapped::Unwrapped,
 };
 use super::util::assoc::{err, val};
-use crate::stream::traits::Stream;
+use crate::stream::traits::{IntoStream, Stream};
 use crate::{response::prelude::*, stream::traits::StreamSlice};
 
 pub trait Parser {
@@ -42,6 +42,21 @@ pub trait Parser {
     /// assert_eq!(first_char, Some('H'));
     /// ```
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output;
+
+    /// Parses the token sequence `input`
+    ///
+    /// # Examples
+    /// Basic usage:
+    /// ```
+    /// use lavan::prelude::*;
+    ///
+    /// let mut input = "Hello, World!";
+    /// let first_char = any().evaluate(input);
+    /// assert_eq!(first_char, Some('H'));
+    /// ```
+    fn evaluate(&self, input: impl IntoStream<Stream = Self::Input>) -> Self::Output {
+        self.parse_stream(&mut input.into_stream())
+    }
 
     // TODO: Documentation
     fn as_ref(&self) -> AsRef<'_, Self>
