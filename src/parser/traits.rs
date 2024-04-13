@@ -304,7 +304,7 @@ pub trait Parser {
     ///     })
     ///     .repeat()
     ///     .to_vec()
-    ///     .parse_stream(&mut (input, 0));
+    ///     .evaluate(input);
     /// assert_eq!(output.value(), expected_out);
     //```
     fn try_with<Par, Fun, Out0, Out1>(self, parser: Par, function: Fun) -> TryWith<Self, Par, Fun>
