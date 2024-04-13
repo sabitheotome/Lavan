@@ -34,10 +34,10 @@ pub trait Parser {
     /// # Examples
     /// Basic usage:
     /// ```
-    /// use lavan::parser::traits::Parser;
-    /// use lavan::parser::sources::any;
+    /// use lavan::prelude::*;
+    /// use lavan::stream::traits::IntoStream;
     ///
-    /// let mut stream = ("Hello, World!", 0);
+    /// let mut stream = "Hello, World!".into_stream();
     /// let first_char = any().parse_stream(&mut stream);
     /// assert_eq!(first_char, Some('H'));
     /// ```
