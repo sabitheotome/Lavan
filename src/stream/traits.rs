@@ -66,3 +66,7 @@ pub trait StreamSlice<'a>: Stream {
     type Slice: 'a;
     fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice;
 }
+pub trait IntoStream: TokenSequence {
+    type Stream: Stream;
+    fn into_stream(self) -> Self::Stream;
+}
