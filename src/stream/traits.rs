@@ -62,6 +62,62 @@ pub trait Stream {
     }
 }
 
+impl<'a, T> Stream for &'a mut T
+where
+    T: Stream,
+{
+    type Item = T::Item;
+    type Peek<'b>= T::Peek<'b>
+    where
+        Self: 'b;
+    type Offset = T::Offset;
+    type Span = T::Span;
+
+    fn offset(&self) -> Self::Offset {
+        (**self).offset()
+    }
+
+    fn offset_mut(&mut self) -> &mut Self::Offset {
+        (**self).offset_mut()
+    }
+
+    fn skip(&mut self) {
+        (**self).skip()
+    }
+
+    fn advance(&mut self, offset: Self::Offset) {
+        (**self).advance(offset)
+    }
+
+    fn retract(&mut self) {
+        (**self).retract()
+    }
+
+    fn go_back(&mut self, offset: Self::Offset) {
+        (**self).go_back(offset)
+    }
+
+    fn nth(&mut self, offset: Self::Offset) -> Option<Self::Item> {
+        (**self).nth(offset)
+    }
+
+    fn next(&mut self) -> Option<Self::Item> {
+        (**self).next()
+    }
+
+    fn peek_nth(&self, offset: Self::Offset) -> Option<Self::Peek<'_>> {
+        (**self).peek_nth(offset)
+    }
+
+    fn peek(&self) -> Option<Self::Peek<'_>> {
+        (**self).peek()
+    }
+
+    fn span(&self, start: Self::Offset, end: Self::Offset) -> Self::Span {
+        (**self).span(start, end)
+    }
+}
+
 pub trait StreamSlice<'a>: Stream {
     type Slice: 'a;
     fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice;
