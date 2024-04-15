@@ -382,15 +382,23 @@ impl<Out: Response, Str: Stream> Parser for fn(&mut Str) -> Out {
     }
 }
 
-// TODO: Experimental
-/*impl<Out: Response, Str: Stream, T> Parser for (T, fn(&T, &mut Str) -> Out) {
+impl<Out: Response, Str: Stream, T> Parser for (T, fn(&T, &mut Str) -> Out) {
     type Input = Str;
     type Output = Out;
 
-    fn parse_stream(self, input: &mut Self::Input) -> Self::Output {
-        (self.1)(self.0, input)
+    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+        (self.1)(&self.0, input)
     }
-}*/
+}
+
+impl<Par: Parser> Parser for fn() -> Par {
+    type Input = Par::Input;
+    type Output = Par::Output;
+
+    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+        self().parse_stream(input)
+    }
+}
 
 pub trait Parse {
     type Input: Stream;
