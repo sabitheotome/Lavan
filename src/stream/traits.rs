@@ -114,7 +114,14 @@ pub trait StreamSlice<'a>: Stream {
     type Slice: 'a;
     fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice;
 }
+
 pub trait IntoStream: TokenSequence {
     type Stream: Stream;
     fn into_stream(self) -> Self::Stream;
 }
+
+pub trait StrStream<'a>: StreamSlice<'a, Slice = &'a str, Item = char> {}
+impl<'a, T> StrStream<'a> for T where T: StreamSlice<'a, Slice = &'a str, Item = char> {}
+
+pub trait SliceStream<'a, E: 'a>: StreamSlice<'a, Slice = &'a [E], Item = E> {}
+impl<'a, T, E: 'a> SliceStream<'a, E> for T where T: StreamSlice<'a, Slice = &'a [E], Item = E> {}
