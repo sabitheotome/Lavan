@@ -26,13 +26,19 @@ where
     Par::Output: ValueFunctor<Value = Val>,
 {
     type Input = Par::Input;
-    type Output = <Par::Output as Response>::WithVal<(Val, <Self::Input as Stream>::Span)>;
+    type Output = <Par::Output as Response>::WithVal<(
+        Val,
+        (
+            <Self::Input as Stream>::Offset,
+            <Self::Input as Stream>::Offset,
+        ),
+    )>;
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         let start = input.offset();
         self.parser.parse_stream(input).map(|value| {
             let end = input.offset();
-            let span = input.span(start, end);
+            let span = (start, end);
             (value, span)
         })
     }

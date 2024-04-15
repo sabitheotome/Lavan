@@ -60,7 +60,6 @@ where
 {
     type Item = T::Item;
     type Offset = T::Offset;
-    type Span = (usize, usize);
     type Peek<'a> = T::Peek<'a>
     where
         Self: 'a;
@@ -104,10 +103,6 @@ where
 
     fn peek(&self) -> Option<Self::Peek<'_>> {
         self.peek_nth(self.offset())
-    }
-
-    fn span(&self, start: Self::Offset, end: Self::Offset) -> Self::Span {
-        (start, end)
     }
 }
 

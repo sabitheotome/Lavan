@@ -22,7 +22,6 @@ pub trait Stream {
     where
         Self: 'a;
     type Offset: Clone;
-    type Span;
 
     fn offset(&self) -> Self::Offset;
     fn offset_mut(&mut self) -> &mut Self::Offset;
@@ -36,8 +35,6 @@ pub trait Stream {
     fn next(&mut self) -> Option<Self::Item>;
     fn peek_nth(&self, offset: Self::Offset) -> Option<Self::Peek<'_>>;
     fn peek(&self) -> Option<Self::Peek<'_>>;
-
-    fn span(&self, start: Self::Offset, end: Self::Offset) -> Self::Span;
 
     fn parse<T>(&mut self) -> T::Output
     where
@@ -71,7 +68,6 @@ where
     where
         Self: 'b;
     type Offset = T::Offset;
-    type Span = T::Span;
 
     fn offset(&self) -> Self::Offset {
         (**self).offset()
@@ -111,10 +107,6 @@ where
 
     fn peek(&self) -> Option<Self::Peek<'_>> {
         (**self).peek()
-    }
-
-    fn span(&self, start: Self::Offset, end: Self::Offset) -> Self::Span {
-        (**self).span(start, end)
     }
 }
 
