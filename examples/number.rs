@@ -1,21 +1,19 @@
-use lavan::parser::{sources::*, traits::Parser};
+use lavan::prelude::*;
 
 fn main() {
     let input = "69420";
-    // stream starting at index 0
-    let mut stream = (input, 0);
 
     let output: Option<u32> = 
         // any ascii digit
-        any_if(|c: &char| c.is_ascii_digit())
+        any_if(char::is_ascii_digit)
         // repeat until you can't find an ascii digit
-        .repeat()
+        .repeat_min(1)
         // collect it into a string
         .collect::<String>()
         // then parse the string into a u32
         .then(|string| string.parse::<u32>().ok())
-        // return the response (in this case, a Option<u32>)
-        .parse_stream(&mut stream);
+        // return the response (Option<u32>)
+        .evaluate(input);
 
     // crash the program if parsing failed
     let number: u32 = output.unwrap();

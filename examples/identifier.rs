@@ -1,9 +1,7 @@
-use lavan::parser::{sources::*, traits::Parser};
+use lavan::prelude::*;
 
 fn main() {
-    // stream starting at index 0
     let input = "_identifier0123456789_abc123_789";
-    let mut stream = (input, 0);
 
     let output: Option<String> = 
         // first char: any ascii alphanumeric or any underscore
@@ -11,7 +9,7 @@ fn main() {
         // And then, the subsequent chars
         .and(
             // any ascii alphanumeric or any underscore
-            any_if(|c: &char| c.is_ascii_alphanumeric()).or(any_eq('_'))
+            any_if(char::is_ascii_alphanumeric).or(any_eq('_'))
             // repeat until the condition is false
             .repeat()
             // collect it into a string
@@ -19,8 +17,8 @@ fn main() {
         )
         // concatenate the first char in the beginning of the string
         .map(|(first, tail)| format!("{first}{tail}"))
-        // return the response (in this case, a Option<u32>)
-        .parse_stream(&mut stream);
+        // return the response (Option<String>)
+        .evaluate(input);
 
     // crash the program if parsing failed
     let identifier: String = output.unwrap();
