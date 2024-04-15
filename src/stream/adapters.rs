@@ -54,6 +54,10 @@ impl<'a> TokenSlice<'a> for &'a str {
     }
 }
 
+pub type SimpleInput<T> = (T, usize);
+pub type StrInput<'a> = (&'a str, usize);
+pub type SliceInput<'a, T> = (&'a [T], usize);
+
 impl<T> Stream for (T, usize)
 where
     T: TokenSequence<Offset = usize>,
