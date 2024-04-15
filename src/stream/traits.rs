@@ -21,7 +21,7 @@ pub trait Stream {
     type Peek<'a>
     where
         Self: 'a;
-    type Offset;
+    type Offset: Clone;
     type Span;
 
     fn offset(&self) -> Self::Offset;

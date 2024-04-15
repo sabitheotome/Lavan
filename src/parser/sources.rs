@@ -1,5 +1,8 @@
 use super::traits::Parser;
-use crate::stream::traits::Stream;
+use crate::{
+    response::prelude::Sure,
+    stream::traits::{Stream, StreamSlice},
+};
 use std::marker::PhantomData;
 
 // TODO: Documentation
@@ -124,5 +127,31 @@ where
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         any().filter(|v| *v != self.1).parse_stream(input)
+    }
+}
+
+// TODO: Documentation
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
+pub struct Take<'a, Str>(Str::Offset, PhantomData<&'a Str>)
+where
+    Str: StreamSlice<'a>;
+
+// TODO: Documentation
+pub fn take<'a, Str>(size: Str::Offset) -> Take<'a, Str>
+where
+    Str: StreamSlice<'a>,
+{
+    Take(size, PhantomData)
+}
+
+impl<'a, Str> Parser for Take<'a, Str>
+where
+    Str: StreamSlice<'a>,
+{
+    type Input = Str;
+    type Output = Sure<Str::Slice>;
+
+    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+        Sure(input.slice(input.offset(), self.0.clone()))
     }
 }
