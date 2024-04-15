@@ -33,10 +33,10 @@ impl<'a, Par, Slc> Parser for Slice<'a, Par>
 where
     Par: Parser,
     Par::Input: StreamSlice<'a, Slice = Slc>,
-    Par::Output: Response<Value = ()>,
+    Par::Output: Response<Value = ()> + Combinable<Sure<Slc>>,
 {
     type Input = Par::Input;
-    type Output = <Par::Output as Response>::WithVal<Slc>;
+    type Output = <Par::Output as Combinable<Sure<Slc>>>::Output;
 
     #[inline]
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
@@ -44,6 +44,6 @@ where
         let result = self.parser.parse_stream(input);
         let end = input.offset();
 
-        result.map(move |_| input.slice(start, end))
+        result.combine_response(|| Sure(input.slice(start, end)))
     }
 }
