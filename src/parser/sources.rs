@@ -5,7 +5,10 @@ use crate::{
 };
 use std::marker::PhantomData;
 
-// TODO: Documentation
+/// A parser for expecting the next token to be an **End of File**
+///
+/// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+/// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct EOI<Str>(PhantomData<Str>);
 
