@@ -4,7 +4,7 @@ use crate::response::prelude::*;
 use crate::response::util::try_op;
 use crate::stream::traits::Stream;
 
-/// TODO
+/// A parser for generating auto-backtracking variants with another parsers
 ///
 /// This `struct` is created by the [`Parser::try_with`] method on [`Parser`].
 /// See its documentation for more.
