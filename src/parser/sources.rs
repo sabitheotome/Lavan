@@ -145,7 +145,11 @@ where
     }
 }
 
-// TODO: Documentation
+/// A parser for taking a provided amount of tokens,
+/// returning a stream slice starting from the current offset
+///
+/// This `struct` is created by the [`take`] method on [`sources`](crate::parser::sources).
+/// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct Take<'a, Str>(Str::Offset, PhantomData<&'a Str>)
 where
