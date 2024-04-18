@@ -88,7 +88,10 @@ where
     }
 }
 
-// TODO: Documentation
+/// A parser for expecting a token to be equal to the provided value
+///
+/// This `struct` is created by the [`any_eq`] method on [`sources`](crate::parser::sources).
+/// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct AnyEq<Str, const I: bool = false>(PhantomData<Str>, Str::Item)
 where
