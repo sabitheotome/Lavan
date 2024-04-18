@@ -2,7 +2,7 @@ use crate::parser::prelude::*;
 use crate::response::prelude::*;
 use crate::stream::traits::Stream;
 
-/// TODO
+/// A parser for converting the value of the response into its Owned version
 ///
 /// This `struct` is created by the [`Parser::owned`] method on [`Parser`].
 /// See its documentation for more.
