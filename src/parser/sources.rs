@@ -59,7 +59,10 @@ where
     }
 }
 
-// TODO: Documentation
+/// A parser for expecting any token that matches a predicate
+///
+/// This `struct` is created by the [`any_if`] method on [`sources`](crate::parser::sources).
+/// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct AnyIf<Str, Fun>(PhantomData<Str>, Fun);
 
