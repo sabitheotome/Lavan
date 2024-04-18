@@ -3,7 +3,7 @@ use crate::response::prelude::*;
 use crate::response::util::try_op;
 use crate::stream::traits::Stream;
 
-// TODO: Documentation
+/// A marker for defining a response in case the equallity check fails
 pub struct OrElse<Res, Err>(Res, std::marker::PhantomData<Err>);
 
 /// A parser for checking equallity with a value
@@ -23,10 +23,18 @@ pub struct Eq<Par, Val, Mod = (), const I: bool = false> {
 /// See its documentation for more.
 pub type Ne<Par, Val, Mod = ()> = Eq<Par, Val, Mod, true>;
 
-// TODO: Documentation
+/// A parser for checking equallity with a value,
+/// generating an error in case of failure
+///
+/// This `struct` is created by the [`Eq::or_else`] method on [`Eq`].
+/// See its documentation for more.
 pub type EqOrElse<Par, Val, Res, Err> = Eq<Par, Val, OrElse<Res, Err>>;
 
-// TODO: Documentation
+/// A parser for checking inequallity with a value
+/// generating an error in case of failure
+///
+/// This `struct` is created by the [`Ne::or_else`] method on [`Ne`].
+/// See its documentation for more.
 pub type NeOrElse<Par, Val, Res, Err> = Ne<Par, Val, OrElse<Res, Err>>;
 
 impl<Par, Val, const I: bool> Eq<Par, Val, (), I> {
