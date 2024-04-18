@@ -118,7 +118,10 @@ where
     }
 }
 
-// TODO: Documentation
+/// A parser for expecting a token to be not equal to the provided value
+///
+/// This `struct` is created by the [`any_ne`] method on [`sources`](crate::parser::sources).
+/// See its documentation for more.
 type AnyNe<Str> = AnyEq<Str, true>;
 
 // TODO: Documentation
