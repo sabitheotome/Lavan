@@ -3,7 +3,7 @@ use crate::parser::sources::any_eq;
 use crate::response::prelude::*;
 use crate::stream::traits::Stream;
 
-/// TODO
+/// A util parser for expecting opening and closing delimiters around
 ///
 /// This `struct` is created by the [`Parser::delimited`] method on [`Parser`].
 /// See its documentation for more.
