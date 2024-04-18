@@ -32,7 +32,10 @@ where
     }
 }
 
-// TODO: Documentation
+/// A parser for expectingany  kind of any token besides **End of File**
+///
+/// This `struct` is created by the [`any`] method on [`sources`](crate::parser::sources).
+/// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 pub struct Any<Str>(PhantomData<Str>);
 
