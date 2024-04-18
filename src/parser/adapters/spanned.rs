@@ -2,7 +2,7 @@ use crate::parser::prelude::*;
 use crate::response::prelude::*;
 use crate::stream::traits::Stream;
 
-/// TODO
+/// A parser for attaching the span of offsets to the reponse
 ///
 /// This `struct` is created by the [`Parser::spanned`] method on [`Parser`].
 /// See its documentation for more.
