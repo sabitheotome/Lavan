@@ -171,7 +171,19 @@ pub trait Parser {
         self.filter(f).not()
     }
 
-    // TODO: Documentation
+    /// Make an equallity condition for the response [Value](Response::Value).
+    /// The [Output](Parser::Output) is a fallible version of the current response,
+    /// defined by the [Filterable] and [FilterableWithErr] traits.
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "Lavan";
+    /// let is_lavan: bool = take(5).eq("Lavan").ignore().evaluate(input);
+    /// assert_eq!(is_lavan, true);
+    /// ```
     fn eq<Val>(self, v: Val) -> Eq<Self, Val>
     where
         Self: Sized,
