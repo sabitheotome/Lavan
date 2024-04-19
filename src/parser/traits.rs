@@ -193,7 +193,21 @@ pub trait Parser {
         Eq::new(self, v)
     }
 
-    // TODO: Documentation
+    /// Make an inequallity condition for the response [Value](Response::Value).
+    /// The [Output](Parser::Output) is a fallible version of the current response,
+    /// defined by the [Filterable] and [FilterableWithErr] traits.
+    ///
+    /// For defining equallity conditions, check [eq](Parser::eq).
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "Legal!!";
+    /// let is_legal: bool = take(7).ne("Illegal").ignore().evaluate(input);
+    /// assert_eq!(is_legal, true);
+    /// ```
     fn ne<Val>(self, v: Val) -> Ne<Self, Val>
     where
         Self: Sized,
