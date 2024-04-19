@@ -132,7 +132,22 @@ pub trait Parser {
         AutoBt::new(self)
     }
 
-    // TODO: Documentation
+    /// Make a fallible [Output](Parser::Output) response into a infallible response.
+    /// This operation is similar to [auto_bt](Parser::auto_bt), automatically backtracking
+    /// in case of fail. The difference lies on the type of [Response] used. Fallible responses
+    /// short-circuit the parsing operation. Using this parser, however, prevents this short-circuiting
+    /// behaviour, making it suitable for optional fields in a Abstract Syntax Tree.
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "ABABAB";
+    /// let bees: Vec<Option<char>> =
+    ///     any_eq('B').opt().repeat_exact(6).to_vec().evaluate(input);
+    /// assert_eq!(bees.len(), 6);
+    /// ```
     fn opt(self) -> Opt<Self>
     where
         Self: Sized,
