@@ -253,7 +253,37 @@ pub trait Parser {
         And::new(self, parser)
     }
 
-    // TODO: Documentation
+    /// Define a fallback parser in case this fails. Essentially, it
+    /// will first attempt to run the first parser. If it fails, it will
+    /// automatically backtrack, and the second parser will run.
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "H";
+    /// let tailsOrHeads = any_eq('T')
+    ///     .or(any_eq('H'))
+    ///     .evaluate(input);
+    /// assert_eq!(tailsOrHeads, Some('H'));
+    /// ```
+    /// Note: the two parsers need to have the same [Output](Parser::Output).
+    /// If you want to have a union of two different outputs, consider using
+    /// [either](Or::either) after the call of this function.
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// struct Tails;
+    /// struct Heads;
+    ///
+    /// let input = "H";
+    /// let tailsOrHeads: Either<Tails, Heads> =
+    ///     any_eq('T').ignore().map(Tails)
+    ///     .or(any_eq('H').ignore().map(Heads))
+    ///     .either().evaluate(input);
+    /// assert_eq!(tailsOrHeads, Some(Heads));
+    /// ```
     fn or<Par>(self, parser: Par) -> Or<Self, Par>
     where
         Self: Sized,
