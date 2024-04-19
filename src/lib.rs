@@ -46,6 +46,6 @@ pub mod stream {
     pub mod traits;
 }
 pub mod util {
-    pub mod ascii;
+    pub mod text;
 }
 pub mod prelude;
