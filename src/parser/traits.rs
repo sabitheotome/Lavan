@@ -145,7 +145,8 @@ pub trait Parser {
     ///
     /// let input = "ABABAB";
     /// let bees: Vec<Option<char>> =
-    ///     any_eq('B').opt().repeat_exact(6).to_vec().evaluate(input);
+    ///     any_eq('B').opt().repeat_exact(6)
+    ///     .to_vec().evaluate(input).value();
     /// assert_eq!(bees.len(), 6);
     /// ```
     fn opt(self) -> Opt<Self>
