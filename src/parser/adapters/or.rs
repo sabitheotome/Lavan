@@ -28,12 +28,25 @@ use either::Either;
 
 #[cfg(feature = "either")]
 impl<Par0, Par1> Or<Par0, Par1> {
-    pub fn either<'a, Str>(&'a self) -> Or<impl Parser + 'a, impl Parser + 'a>
+    pub fn either(
+        &self,
+    ) -> Or<
+        impl Parser<
+                Output = <Par0::Output as Response>::WithVal<Either<val![Par0], val![Par1]>>,
+                Input = Par0::Input,
+            > + '_,
+        impl Parser<
+                Output = <Par1::Output as Response>::WithVal<Either<val![Par0], val![Par1]>>,
+                Input = Par1::Input,
+            > + '_,
+    >
     where
         Par0: Parser,
-        Par0::Output: 'a + ValueFunctor,
+        Par0::Output: ValueFunctor,
         Par1: Parser,
-        Par1::Output: 'a + ValueFunctor,
+        Par1::Output: ValueFunctor,
+        <Par0::Output as Response>::WithVal<Either<val![Par0], val![Par1]>>:
+            Switchable<<Par1::Output as Response>::WithVal<Either<val![Par0], val![Par1]>>>,
     {
         let parser0 = self
             .parser0
