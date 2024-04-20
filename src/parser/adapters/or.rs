@@ -17,7 +17,8 @@ impl<Par0, Par1> Or<Par0, Par1> {
     where
         Par0: Parser,
         Par1: Parser<Input = Par0::Input>,
-        Par0::Output: Switchable<Par1::Output>,
+        Par0::Output:
+            Switchable<<Par1::Output as Response>::WithVal<<Par0::Output as Response>::Value>>,
     {
         Or { parser0, parser1 }
     }

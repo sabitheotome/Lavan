@@ -341,7 +341,8 @@ pub trait Parser {
     fn or<Par>(self, parser: Par) -> Or<Self, Par>
     where
         Self: Sized,
-        Self::Output: Switchable<Par::Output>,
+        Self::Output:
+            Switchable<<Par::Output as Response>::WithVal<<Self::Output as Response>::Value>>,
         Par: Parser<Input = Self::Input>,
     {
         Or::new(self, parser)
