@@ -294,9 +294,9 @@ pub trait Parser {
     /// use lavan::prelude::*;
     ///
     /// let input = "ABC";
-    /// let abc: Option<(char, char, char)> =
+    /// let abc: Option<((char, char), char)> =
     ///     any().and(any()).and(any()).evaluate(input);
-    /// assert_eq!(abc, Some(('A', 'B', 'C')));
+    /// assert_eq!(abc, Some((('A', 'B'), 'C')));
     /// ```
     fn and<Par>(self, parser: Par) -> And<Self, Par>
     where
