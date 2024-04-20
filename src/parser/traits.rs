@@ -497,7 +497,7 @@ pub trait Parse {
     fn parse(input: &mut Self::Input) -> Self::Output;
 }
 
-// TODO: Experimental
+// TODO: highly experimental
 /*impl<T> Parse for Option<T>
 where
     T: Parse,
@@ -508,5 +508,21 @@ where
 
     fn parse(input: &mut Self::Input) -> Self::Output {
         T::parse(input).opt_response()
+    }
+}
+
+#[cfg(feature = "either")]
+impl<L, R> Parse for either::Either<L, R>
+where
+    L: Parse,
+    R: Parse<Input = L::Input, Output = L::Output>,
+    L::Input: Stream,
+    L::Output: Switchable<L::Output, Output = Sure<either::Either<L, R>>>,
+{
+    type Input = L::Input;
+    type Output = Sure<Self>;
+
+    fn parse(input: &mut Self::Input) -> Self::Output {
+        L::parse.or(R::parse).either().parse_stream(input)
     }
 }*/
