@@ -169,7 +169,7 @@ where
     Par: Parser<Output = Out>,
     Col: Default + Extend<Out::Value>,
     Out: Response,
-    Out::WithVal<Col>: Fallible<Value = Col, Error = Out::Error>,
+    Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
 {
     type Input = Par::Input;
     type Output = Out::WithVal<Col>;
