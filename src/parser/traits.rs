@@ -326,17 +326,21 @@ pub trait Parser {
     /// If you want to have a union of two different outputs, consider using
     /// [either](Or::either) after the call of this function.
     ///```
+    /// #![cfg(feature = "either")]
+    /// use either::{Either, Either::*};
     /// use lavan::prelude::*;
     ///
+    /// #[derive(Debug, PartialEq)]
     /// struct Tails;
+    /// #[derive(Debug, PartialEq)]
     /// struct Heads;
     ///
     /// let input = "H";
     /// let tailsOrHeads: Either<Tails, Heads> =
-    ///     any_eq('T').ignore().map(Tails)
-    ///     .or(any_eq('H').ignore().map(Heads))
-    ///     .either().evaluate(input);
-    /// assert_eq!(tailsOrHeads, Some(Heads));
+    ///     any_eq('T').ignore().map(|| Tails)
+    ///     .or(any_eq('H').ignore().map(|| Heads))
+    ///     .either().evaluate(input).unwrap();
+    /// assert_eq!(tailsOrHeads, Right(Heads));
     /// ```
     fn or<Par>(self, parser: Par) -> Or<Self, Par>
     where
