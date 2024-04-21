@@ -84,7 +84,20 @@ pub trait Parser {
         MapErr::new(self, f)
     }
 
-    // TODO: Documentation
+    /// Map the value contained in the [Output](Parser::Output) to a [Response].
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "A";
+    /// let maybe_uppercase : Option<char> = any()
+    ///     .then(|c: char| Some(c)
+    ///         .filter(char::is_ascii_uppercase))
+    ///     .evaluate(input);
+    /// assert_eq!(maybe_uppercase, Some('A'));
+    /// ```
     fn then<Fun>(self, f: Fun) -> Then<Self, Fun>
     where
         Self: Sized,
