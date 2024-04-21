@@ -58,7 +58,28 @@ pub trait Parser {
         self.parse_stream(&mut input.into_stream())
     }
 
-    // TODO: Documentation
+    /// Take this parser by reference, without consuming it.
+    /// This operation can be useful if you want to reuse the parser later.
+    ///
+    /// Since [parse_stream](Parser::parse_stream) takes `self` by reference,
+    /// it is possible to plug adapters without losing ownership.
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "YesOrNo";
+    ///
+    /// let complex_parser = any(); // imagine this a very complex parser
+    /// let super_complex_parser =
+    ///     // you can use the same parser twice!
+    ///     complex_parser.as_ref().eq('Y').or(
+    ///         complex_parser.as_ref().eq('N')
+    ///     );
+    /// let yesOrNo = super_complex_parser.evaluate(input);
+    /// assert_eq!(yesOrNo, Some('Y'));
+    /// ```
     fn as_ref(&self) -> AsRef<'_, Self>
     where
         Self: Sized,
