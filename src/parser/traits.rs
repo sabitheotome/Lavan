@@ -66,7 +66,18 @@ pub trait Parser {
         AsRef::new(self)
     }
 
-    // TODO: Documentation
+    /// Map the value contained in the [Output](Parser::Output) to another type.
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "A";
+    /// let is_uppercase: Option<bool> =
+    ///     any().map(char::is_uppercase).evaluate(input);
+    /// assert_eq!(is_uppercase, Some(true));
+    /// ```
     fn map<Fun>(self, f: Fun) -> Map<Self, Fun>
     where
         Self: Sized,
