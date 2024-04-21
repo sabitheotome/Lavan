@@ -157,7 +157,19 @@ pub trait Parser {
         Opt::new(self)
     }
 
-    // TODO: Documentation
+    /// Yield a slice of the [Input](Parser::Input), defined by the startijng
+    /// offset and the ending offset of the execution of the parser.
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "Hello, World!";
+    /// let slice: Sure<&str> =
+    ///     any().ignore().repeat().slice().evaluate(input);
+    /// assert_eq!(slice.value(), "Hello, World!");
+    /// ```
     fn slice<'a>(self) -> Slice<'a, Self>
     where
         Self: Sized,
