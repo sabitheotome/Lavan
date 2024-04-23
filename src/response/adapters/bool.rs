@@ -171,6 +171,20 @@ impl Recoverable for bool {
     }
 }
 
+impl<Fun, Err> ErrMappable<Fun> for bool
+where
+    Fun: Fn() -> Err,
+{
+    type Output = Unsure<Err>;
+
+    fn err_map_response(self, f: &Fun) -> Self::Output {
+        match self {
+            true => Unsure::ok(),
+            false => Unsure::err(f()),
+        }
+    }
+}
+
 impl Optionable for bool {
     type Output = ();
 
