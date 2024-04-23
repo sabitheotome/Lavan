@@ -3,4 +3,5 @@ pub use crate::parser::traits::{Parse, Parser};
 pub use crate::response::adapters::{sure::Sure, unsure::Unsure};
 pub use crate::stream::adapters::SliceInput;
 pub use crate::stream::adapters::StrInput;
+pub use crate::util::text::*;
 pub(crate) use std::ops::ControlFlow::*;
