@@ -14,6 +14,7 @@ pub trait TokenSequence {
 pub trait TokenSlice<'a>: TokenSequence {
     type Slice: 'a;
     fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice;
+    fn try_slice(&self, start: Self::Offset, end: Self::Offset) -> Option<Self::Slice>;
 }
 
 pub trait Stream {
@@ -113,6 +114,7 @@ where
 pub trait StreamSlice<'a>: Stream {
     type Slice: 'a;
     fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice;
+    fn try_slice(&self, start: Self::Offset, end: Self::Offset) -> Option<Self::Slice>;
 }
 
 pub trait IntoStream: TokenSequence {

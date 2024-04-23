@@ -28,6 +28,10 @@ where
     fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice {
         &self[start..end]
     }
+
+    fn try_slice(&self, start: Self::Offset, end: Self::Offset) -> Option<Self::Slice> {
+        self.get(start..end)
+    }
 }
 
 impl<'b> TokenSequence for &'b str {
@@ -51,6 +55,10 @@ impl<'a> TokenSlice<'a> for &'a str {
 
     fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice {
         &self[start..end]
+    }
+
+    fn try_slice(&self, start: Self::Offset, end: Self::Offset) -> Option<Self::Slice> {
+        self.get(start..end)
     }
 }
 
@@ -118,6 +126,10 @@ where
 
     fn slice(&self, start: Self::Offset, end: Self::Offset) -> Self::Slice {
         self.0.slice(start, end)
+    }
+
+    fn try_slice(&self, start: Self::Offset, end: Self::Offset) -> Option<Self::Slice> {
+        self.0.try_slice(start, end)
     }
 }
 
