@@ -1,13 +1,13 @@
 use crate::parser::traits::{Parse, Parser};
 
 pub trait TokenSequence {
-    type Item;
+    type Token;
     type Peek<'a>
     where
         Self: 'a;
     type Offset;
 
-    fn nth(&self, offset: Self::Offset) -> Option<Self::Item>;
+    fn nth(&self, offset: Self::Offset) -> Option<Self::Token>;
     fn peek_nth(&self, offset: Self::Offset) -> Option<Self::Peek<'_>>;
 }
 
@@ -17,7 +17,7 @@ pub trait TokenSlice<'a>: TokenSequence {
 }
 
 pub trait Stream {
-    type Item;
+    type Token;
     type Peek<'a>
     where
         Self: 'a;
@@ -31,8 +31,8 @@ pub trait Stream {
     fn retract(&mut self);
     fn go_back(&mut self, offset: Self::Offset);
 
-    fn nth(&mut self, offset: Self::Offset) -> Option<Self::Item>;
-    fn next(&mut self) -> Option<Self::Item>;
+    fn nth(&mut self, offset: Self::Offset) -> Option<Self::Token>;
+    fn next(&mut self) -> Option<Self::Token>;
     fn peek_nth(&self, offset: Self::Offset) -> Option<Self::Peek<'_>>;
     fn peek(&self) -> Option<Self::Peek<'_>>;
 
@@ -63,7 +63,7 @@ impl<'a, T> Stream for &'a mut T
 where
     T: Stream,
 {
-    type Item = T::Item;
+    type Token = T::Token;
     type Peek<'b>= T::Peek<'b>
     where
         Self: 'b;
@@ -93,11 +93,11 @@ where
         (**self).go_back(offset)
     }
 
-    fn nth(&mut self, offset: Self::Offset) -> Option<Self::Item> {
+    fn nth(&mut self, offset: Self::Offset) -> Option<Self::Token> {
         (**self).nth(offset)
     }
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next(&mut self) -> Option<Self::Token> {
         (**self).next()
     }
 
@@ -120,8 +120,8 @@ pub trait IntoStream: TokenSequence {
     fn into_stream(self) -> Self::Stream;
 }
 
-pub trait StrStream<'a>: StreamSlice<'a, Slice = &'a str, Item = char> {}
-impl<'a, T> StrStream<'a> for T where T: StreamSlice<'a, Slice = &'a str, Item = char> {}
+pub trait StrStream<'a>: StreamSlice<'a, Slice = &'a str, Token = char> {}
+impl<'a, T> StrStream<'a> for T where T: StreamSlice<'a, Slice = &'a str, Token = char> {}
 
-pub trait SliceStream<'a, E: 'a>: StreamSlice<'a, Slice = &'a [E], Item = E> {}
-impl<'a, T, E: 'a> SliceStream<'a, E> for T where T: StreamSlice<'a, Slice = &'a [E], Item = E> {}
+pub trait SliceStream<'a, E: 'a>: StreamSlice<'a, Slice = &'a [E], Token = E> {}
+impl<'a, T, E: 'a> SliceStream<'a, E> for T where T: StreamSlice<'a, Slice = &'a [E], Token = E> {}

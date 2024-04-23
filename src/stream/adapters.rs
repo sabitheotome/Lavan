@@ -4,13 +4,13 @@ impl<'a, T> TokenSequence for &'a [T]
 where
     T: Clone,
 {
-    type Item = T;
+    type Token = T;
     type Offset = usize;
     type Peek<'b> = &'b T
     where
         Self: 'b;
 
-    fn nth(&self, offset: Self::Offset) -> Option<Self::Item> {
+    fn nth(&self, offset: Self::Offset) -> Option<Self::Token> {
         self.peek_nth(offset).cloned()
     }
 
@@ -31,7 +31,7 @@ where
 }
 
 impl<'b> TokenSequence for &'b str {
-    type Item = char;
+    type Token = char;
     type Offset = usize;
     type Peek<'a> = char
     where
@@ -62,7 +62,7 @@ impl<T> Stream for (T, usize)
 where
     T: TokenSequence<Offset = usize>,
 {
-    type Item = T::Item;
+    type Token = T::Token;
     type Offset = T::Offset;
     type Peek<'a> = T::Peek<'a>
     where
@@ -92,12 +92,12 @@ where
         *self.offset_mut() -= offset;
     }
 
-    fn nth(&mut self, offset: Self::Offset) -> Option<Self::Item> {
+    fn nth(&mut self, offset: Self::Offset) -> Option<Self::Token> {
         *self.offset_mut() = offset + 1;
         self.0.nth(offset)
     }
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next(&mut self) -> Option<Self::Token> {
         self.nth(self.offset())
     }
 

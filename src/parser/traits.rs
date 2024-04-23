@@ -333,7 +333,7 @@ pub trait Parser {
     fn delimited<Del, First, Second>(self, open: Del, close: Del) -> Delimited<Self, Del>
     where
         Self: Sized,
-        Self::Input: Stream<Item = Del>,
+        Self::Input: Stream<Token = Del>,
         Del: PartialEq,
         Option<Del>: Combinable<Self::Output, Output = First>,
         First: Combinable<Option<Del>, Output = Second>,

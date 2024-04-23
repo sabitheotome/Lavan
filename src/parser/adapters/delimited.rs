@@ -17,7 +17,7 @@ impl<Par, Del> Delimited<Par, Del> {
     pub(crate) fn new<First, Second>(parser: Par, open: Del, close: Del) -> Self
     where
         Par: Parser,
-        Par::Input: Stream<Item = Del>,
+        Par::Input: Stream<Token = Del>,
         Del: PartialEq,
         Option<Del>: Combinable<Par::Output, Output = First>,
         First: Combinable<Option<Del>, Output = Second>,
@@ -34,7 +34,7 @@ impl<Par, Del> Delimited<Par, Del> {
 impl<Par, Del, First, Second> Parser for Delimited<Par, Del>
 where
     Par: Parser,
-    Par::Input: Stream<Item = Del>,
+    Par::Input: Stream<Token = Del>,
     Del: PartialEq,
     Option<Del>: Combinable<Par::Output, Output = First>,
     First: Combinable<Option<Del>, Output = Second>,

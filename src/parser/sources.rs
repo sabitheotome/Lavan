@@ -52,7 +52,7 @@ where
     Str: Stream,
 {
     type Input = Str;
-    type Output = Option<Str::Item>;
+    type Output = Option<Str::Token>;
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         input.next()
@@ -70,7 +70,7 @@ pub struct AnyIf<Str, Fun>(PhantomData<Str>, Fun);
 pub fn any_if<Str, Fun>(f: Fun) -> AnyIf<Str, Fun>
 where
     Str: Stream,
-    Fun: Fn(&Str::Item) -> bool,
+    Fun: Fn(&Str::Token) -> bool,
 {
     AnyIf(PhantomData, f)
 }
@@ -78,10 +78,10 @@ where
 impl<Str, Fun> Parser for AnyIf<Str, Fun>
 where
     Str: Stream,
-    Fun: Fn(&Str::Item) -> bool,
+    Fun: Fn(&Str::Token) -> bool,
 {
     type Input = Str;
-    type Output = Option<Str::Item>;
+    type Output = Option<Str::Token>;
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         any().filter(&self.1).parse_stream(input)
@@ -93,12 +93,12 @@ where
 /// This `struct` is created by the [`any_eq`] method on [`sources`](crate::parser::sources).
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
-pub struct AnyEq<Str, const I: bool = false>(PhantomData<Str>, Str::Item)
+pub struct AnyEq<Str, const I: bool = false>(PhantomData<Str>, Str::Token)
 where
     Str: Stream;
 
 // TODO: Documentation
-pub fn any_eq<Str>(v: Str::Item) -> AnyEq<Str>
+pub fn any_eq<Str>(v: Str::Token) -> AnyEq<Str>
 where
     Str: Stream,
 {
@@ -108,10 +108,10 @@ where
 impl<Str> Parser for AnyEq<Str>
 where
     Str: Stream,
-    Str::Item: PartialEq,
+    Str::Token: PartialEq,
 {
     type Input = Str;
-    type Output = Option<Str::Item>;
+    type Output = Option<Str::Token>;
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         any().filter(|v| *v == self.1).parse_stream(input)
@@ -125,7 +125,7 @@ where
 type AnyNe<Str> = AnyEq<Str, true>;
 
 // TODO: Documentation
-pub fn any_ne<Str>(v: Str::Item) -> AnyNe<Str>
+pub fn any_ne<Str>(v: Str::Token) -> AnyNe<Str>
 where
     Str: Stream,
 {
@@ -135,10 +135,10 @@ where
 impl<Str> Parser for AnyNe<Str>
 where
     Str: Stream,
-    Str::Item: PartialEq,
+    Str::Token: PartialEq,
 {
     type Input = Str;
-    type Output = Option<Str::Item>;
+    type Output = Option<Str::Token>;
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
         any().filter(|v| *v != self.1).parse_stream(input)
