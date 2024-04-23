@@ -137,8 +137,24 @@ pub trait Parser {
     {
         Then::new(self, f)
     }
-
-    // TODO: Documentation
+    /// Discards the response's [Value](Response::Value).
+    /// This operation converts the [Output](Parser::Output) into a [`Attachable`]
+    /// equivalent, defined by the [Ignorable] trait.
+    ///
+    /// This operation can be required by some operations, to check if the
+    /// programmer is aware of the discartion. It can also be useful for
+    /// convenience with mapping and type simplification.
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "Something";
+    /// let is_all_alphabetic: bool = any_if(char::is_ascii_alphabetic)
+    ///     .ignore().repeat_eoi().evaluate(input);
+    /// assert_eq!(is_all_alphabetic, true);
+    /// ```
     fn ignore(self) -> Ignore<Self>
     where
         Self: Sized,
