@@ -338,6 +338,7 @@ pub trait Parser {
     /// defined by the [Filterable] and [FilterableWithErr] traits.
     ///
     /// For defining equallity conditions, check [eq](Parser::eq).
+    /// It's possible to define a unmatch case through [or_else](Ne::or_else).
     ///
     /// # Examples
     /// Basic usage:
