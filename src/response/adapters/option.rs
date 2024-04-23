@@ -152,6 +152,20 @@ impl<Val> Ignorable for Option<Val> {
     }
 }
 
+impl<Fun, Val, Err> ErrMappable<Fun> for Option<Val>
+where
+    Fun: Fn() -> Err,
+{
+    type Output = Result<Val, Err>;
+
+    fn err_map_response(self, f: &Fun) -> Self::Output {
+        match self {
+            Some(value) => Ok(value),
+            None => Err(f()),
+        }
+    }
+}
+
 impl<Val> Optionable for Option<Val> {
     type Output = Sure<Option<Val>>;
 
