@@ -87,8 +87,7 @@ pub trait Parser {
         AsRef::new(self)
     }
 
-    // TODO: update documentation to reference [Value](Response::Value) and fix typo
-    /// Map the value contained in the [Output](Parser::Output) to another type.
+    /// Maps the response's [Value](Response::Value) to another type.
     ///
     /// # Examples
     /// Basic usage:
