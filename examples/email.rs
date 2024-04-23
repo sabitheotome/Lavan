@@ -4,15 +4,15 @@ fn main() {
     let input = "es4fbero15181@r65dgh51.com";
 
     let names_and_dots = any_if(char::is_ascii_alphanumeric)
-        .ignore()
+        .discard()
         .repeat_min(1)
         .repeat_min(1)
-        .separated_by(any_eq('.').ignore())
+        .separated_by(any_eq('.').discard())
         .slice();
 
     let email: Option<(&str, &str)> = names_and_dots
         .as_ref()
-        .and(any_eq('@').ignore())
+        .and(any_eq('@').discard())
         .and(names_and_dots.as_ref())
         .evaluate(input);
 

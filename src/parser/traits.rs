@@ -169,10 +169,10 @@ pub trait Parser {
     ///
     /// let input = "Something";
     /// let is_all_alphabetic: bool = any_if(char::is_ascii_alphabetic)
-    ///     .ignore().repeat_eoi().evaluate(input);
+    ///     .discard().repeat_eoi().evaluate(input);
     /// assert_eq!(is_all_alphabetic, true);
     /// ```
-    fn ignore(self) -> Ignore<Self>
+    fn discard(self) -> Ignore<Self>
     where
         Self: Sized,
         Self::Output: Ignorable,
@@ -245,7 +245,7 @@ pub trait Parser {
     ///
     /// let input = "Hello, World!";
     /// let slice: Sure<&str> =
-    ///     any().ignore().repeat().slice().evaluate(input);
+    ///     any().discard().repeat().slice().evaluate(input);
     /// assert_eq!(slice.value(), "Hello, World!");
     /// ```
     fn slice<'a>(self) -> Slice<'a, Self>
@@ -270,7 +270,7 @@ pub trait Parser {
     ///
     /// let input = "Lavan";
     /// let is_lavan: bool =
-    ///     take(5).filter(|s| *s == "Lavan").ignore().evaluate(input);
+    ///     take(5).filter(|s| *s == "Lavan").discard().evaluate(input);
     /// assert_eq!(is_lavan, true);
     /// ```
     fn filter<Fun>(self, f: Fun) -> Filter<Self, Fun>
@@ -296,7 +296,7 @@ pub trait Parser {
     ///
     /// let input = "Lavan";
     /// let is_lavan: bool =
-    ///     take(5).filter(|s| *s == "Lavan").ignore().evaluate(input);
+    ///     take(5).filter(|s| *s == "Lavan").discard().evaluate(input);
     /// assert_eq!(is_lavan, true);
     /// ```
     fn filter_not<Fun>(self, f: Fun) -> FilterNot<Self, Fun>
@@ -320,7 +320,7 @@ pub trait Parser {
     /// use lavan::prelude::*;
     ///
     /// let input = "Lavan";
-    /// let is_lavan: bool = take(5).eq("Lavan").ignore().evaluate(input);
+    /// let is_lavan: bool = take(5).eq("Lavan").discard().evaluate(input);
     /// assert_eq!(is_lavan, true);
     /// ```
     fn eq<Val>(self, v: Val) -> Eq<Self, Val>
@@ -345,7 +345,7 @@ pub trait Parser {
     /// use lavan::prelude::*;
     ///
     /// let input = "Legal!!";
-    /// let is_legal: bool = take(7).ne("Illegal").ignore().evaluate(input);
+    /// let is_legal: bool = take(7).ne("Illegal").discard().evaluate(input);
     /// assert_eq!(is_legal, true);
     /// ```
     fn ne<Val>(self, v: Val) -> Ne<Self, Val>
@@ -462,8 +462,8 @@ pub trait Parser {
     ///
     /// let input = "H";
     /// let tailsOrHeads: Either<Tails, Heads> =
-    ///     any_eq('T').ignore().map(|| Tails)
-    ///     .or(any_eq('H').ignore().map(|| Heads))
+    ///     any_eq('T').discard().map(|| Tails)
+    ///     .or(any_eq('H').discard().map(|| Heads))
     ///     .either().evaluate(input).unwrap();
     /// assert_eq!(tailsOrHeads, Right(Heads));
     /// ```
