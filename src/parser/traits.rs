@@ -313,6 +313,8 @@ pub trait Parser {
     /// The [Output](Parser::Output) is a fallible version of the current response,
     /// defined by the [Filterable] and [FilterableWithErr] traits.
     ///
+    /// It's possible to define a unmatch case through [or_else](Eq::or_else).
+    ///
     /// # Examples
     /// Basic usage:
     ///```
