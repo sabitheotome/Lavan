@@ -7,6 +7,7 @@ pub trait TokenSequence {
         Self: 'a;
     type Offset;
 
+    fn len(&self) -> Self::Offset;
     fn nth(&self, offset: Self::Offset) -> Option<Self::Token>;
     fn peek_nth(&self, offset: Self::Offset) -> Option<Self::Peek<'_>>;
 }
@@ -31,6 +32,7 @@ pub trait Stream {
     fn advance(&mut self, offset: Self::Offset);
     fn retract(&mut self);
     fn go_back(&mut self, offset: Self::Offset);
+    fn len(&self) -> Self::Offset;
 
     fn nth(&mut self, offset: Self::Offset) -> Option<Self::Token>;
     fn next(&mut self) -> Option<Self::Token>;
@@ -88,6 +90,10 @@ where
 
     fn retract(&mut self) {
         (**self).retract()
+    }
+
+    fn len(&self) -> Self::Offset {
+        (**self).len()
     }
 
     fn go_back(&mut self, offset: Self::Offset) {

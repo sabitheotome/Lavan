@@ -10,6 +10,10 @@ where
     where
         Self: 'b;
 
+    fn len(&self) -> Self::Offset {
+        (*self).len()
+    }
+
     fn nth(&self, offset: Self::Offset) -> Option<Self::Token> {
         self.peek_nth(offset).cloned()
     }
@@ -40,6 +44,10 @@ impl<'b> TokenSequence for &'b str {
     type Peek<'a> = char
     where
         Self: 'a;
+
+    fn len(&self) -> Self::Offset {
+        (*self).len()
+    }
 
     fn nth(&self, offset: Self::Offset) -> Option<Self::Peek<'_>> {
         self.peek_nth(offset)
@@ -98,6 +106,10 @@ where
 
     fn go_back(&mut self, offset: Self::Offset) {
         *self.offset_mut() -= offset;
+    }
+
+    fn len(&self) -> Self::Offset {
+        self.0.len()
     }
 
     fn nth(&mut self, offset: Self::Offset) -> Option<Self::Token> {
