@@ -422,7 +422,7 @@ where
 
 impl<Par, Mod, Col> Repeater<Par, Mod, Col> {
     #[inline]
-    fn separated_by<Int>(self, parser: Int) -> Repeater<Par, Inter<Mod, Int>, Col> {
+    pub fn separated_by<Int>(self, parser: Int) -> Repeater<Par, Inter<Mod, Int>, Col> {
         Repeater {
             parser: self.parser,
             mode: Inter(self.mode, parser),
