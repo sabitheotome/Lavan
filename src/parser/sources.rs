@@ -168,9 +168,10 @@ where
     Str: StreamSlice<'a>,
 {
     type Input = Str;
-    type Output = Sure<Str::Slice>;
+    type Output = Option<Str::Slice>;
 
     fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        Sure(input.slice(input.offset(), self.0.clone()))
+        let end = self.0.clone();
+        input.try_slice(input.offset(), end)
     }
 }
