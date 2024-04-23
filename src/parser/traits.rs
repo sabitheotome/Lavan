@@ -87,6 +87,7 @@ pub trait Parser {
         AsRef::new(self)
     }
 
+    // TODO: update documentation to reference [Value](Response::Value) and fix typo
     /// Map the value contained in the [Output](Parser::Output) to another type.
     ///
     /// # Examples
@@ -107,7 +108,22 @@ pub trait Parser {
         Map::new(self, f)
     }
 
-    // TODO: Documentation
+    /// Maps the [Error](Response::Error) contained in the
+    /// [Output](Parser::Output) to another type.
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// #[derive(Debug, PartialEq)]
+    /// struct ExpectedSomethingError;
+    ///
+    /// let input = "Nothing";
+    /// let result: Result<&str,  ExpectedSomethingError> = word("Something")
+    ///     .map_err(|| ExpectedSomethingError).evaluate(input);
+    /// assert_eq!(result, Err(ExpectedSomethingError));
+    /// ```
     fn map_err<Fun>(self, f: Fun) -> MapErr<Self, Fun>
     where
         Self: Sized,
@@ -137,6 +153,8 @@ pub trait Parser {
     {
         Then::new(self, f)
     }
+
+    // TODO: rename to "discard"
     /// Discards the response's [Value](Response::Value).
     /// This operation converts the [Output](Parser::Output) into a [`Attachable`]
     /// equivalent, defined by the [Ignorable] trait.
