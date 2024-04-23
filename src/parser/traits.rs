@@ -258,7 +258,22 @@ pub trait Parser {
         Slice::new(self)
     }
 
-    // TODO: Documentation
+    /// Filters the response's [Value](Response::Value) through a predicate.
+    /// The [Output](Parser::Output) is a fallible version of the current response,
+    /// defined by the [Filterable] and [FilterableWithErr] traits.
+    ///
+    /// It's possible to define a unmatch case through [or_else](Filter::or_else).
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "Lavan";
+    /// let is_lavan: bool =
+    ///     take(5).filter(|s| *s == "Lavan").ignore().evaluate(input);
+    /// assert_eq!(is_lavan, true);
+    /// ```
     fn filter<Fun>(self, f: Fun) -> Filter<Self, Fun>
     where
         Self: Sized,
