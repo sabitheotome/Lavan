@@ -283,7 +283,23 @@ pub trait Parser {
         Filter::new(self, f)
     }
 
-    // TODO: Documentation
+    /// Filters the response's [Value](Response::Value) through a inverted predicate.
+    /// The [Output](Parser::Output) is a fallible version of the current response,
+    /// defined by the [Filterable] and [FilterableWithErr] traits.
+    ///
+    /// For defining equallity conditions, check [filter](Parser::filter).
+    /// It's possible to define a unmatch case through [or_else](Filter::or_else).
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "Lavan";
+    /// let is_lavan: bool =
+    ///     take(5).filter(|s| *s == "Lavan").ignore().evaluate(input);
+    /// assert_eq!(is_lavan, true);
+    /// ```
     fn filter_not<Fun>(self, f: Fun) -> FilterNot<Self, Fun>
     where
         Self: Sized,
