@@ -77,7 +77,7 @@ pub trait Recoverable: Response {
 
 pub trait Attachable: Response {
     type Output<V>: Ignorable;
-    fn attach_to_response<V>(self, value: V) -> Self::Output<V>;
+    fn attach_to_response<V>(self, value: impl FnOnce() -> V) -> Self::Output<V>;
 }
 
 pub trait Ignorable: Response {

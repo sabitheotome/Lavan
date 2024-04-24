@@ -65,8 +65,8 @@ where
 impl Attachable for () {
     type Output<V> = Sure<V>;
 
-    fn attach_to_response<V>(self, value: V) -> Self::Output<V> {
-        Sure(value)
+    fn attach_to_response<V>(self, value: impl FnOnce() -> V) -> Self::Output<V> {
+        Sure(value())
     }
 }
 

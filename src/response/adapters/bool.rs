@@ -151,8 +151,8 @@ impl Switchable<bool> for bool {
 impl Attachable for bool {
     type Output<V> = Option<V>;
 
-    fn attach_to_response<V>(self, value: V) -> Self::Output<V> {
-        self.then_some(value)
+    fn attach_to_response<V>(self, value: impl FnOnce() -> V) -> Self::Output<V> {
+        self.then_some(value())
     }
 }
 

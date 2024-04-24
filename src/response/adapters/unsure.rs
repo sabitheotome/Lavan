@@ -180,8 +180,8 @@ impl<Err> Switchable<Unsure<Err>> for Unsure<Err> {
 impl<Err> Attachable for Unsure<Err> {
     type Output<V> = Result<V, Err>;
 
-    fn attach_to_response<V>(self, value: V) -> Self::Output<V> {
-        self.into_result().map(|()| value)
+    fn attach_to_response<V>(self, value: impl FnOnce() -> V) -> Self::Output<V> {
+        self.into_result().map(|()| value())
     }
 }
 
