@@ -5,7 +5,7 @@ use super::adapters::{
     delimited::Delimited,
     eq::{Eq, Ne},
     filter::{Filter, FilterNot},
-    ignore::Ignore,
+    ignore::Discard,
     map::Map,
     map_err::MapErr,
     opt::Opt,
@@ -172,12 +172,12 @@ pub trait Parser {
     ///     .discard().repeat_eoi().evaluate(input);
     /// assert_eq!(is_all_alphabetic, true);
     /// ```
-    fn discard(self) -> Ignore<Self>
+    fn discard(self) -> Discard<Self>
     where
         Self: Sized,
         Self::Output: Ignorable,
     {
-        Ignore::new(self)
+        Discard::new(self)
     }
 
     /// Automatically backtracks if the parsing has failed

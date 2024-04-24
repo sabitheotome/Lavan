@@ -4,14 +4,14 @@ use crate::stream::traits::Stream;
 
 /// A parser for ignoring the [`Response::Value`] through [`Ignorable`]
 ///
-/// This `struct` is created by the [`Parser::ignore`] method on [`Parser`].
+/// This `struct` is created by the [`Parser::discard`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
-pub struct Ignore<Par> {
+pub struct Discard<Par> {
     parser: Par,
 }
 
-impl<Par> Ignore<Par> {
+impl<Par> Discard<Par> {
     pub(crate) fn new(parser: Par) -> Self
     where
         Par: Parser,
@@ -21,7 +21,7 @@ impl<Par> Ignore<Par> {
     }
 }
 
-impl<Par> Parser for Ignore<Par>
+impl<Par> Parser for Discard<Par>
 where
     Par: Parser,
     Par::Output: Ignorable,
