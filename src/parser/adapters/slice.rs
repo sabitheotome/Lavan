@@ -20,7 +20,7 @@ impl<'a, Par> Slice<'a, Par> {
     where
         Par: Parser,
         Par::Input: StreamSlice<'a>,
-        Par::Output: Response<Value = ()>,
+        Par::Output: Attachable,
     {
         Self {
             parser,

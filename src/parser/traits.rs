@@ -252,7 +252,7 @@ pub trait Parser {
     where
         Self: Sized,
         Self::Input: StreamSlice<'a>,
-        Self::Output: Response<Value = ()>,
+        Self::Output: Attachable,
     {
         Slice::new(self)
     }
