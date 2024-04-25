@@ -25,7 +25,7 @@ use crate::{response::prelude::*, stream::traits::StreamSlice};
 
 pub trait Parser {
     /// The input [`Stream`] iterated by the parser
-    type Input: Stream;
+    type Input: Request;
     /// The output [`Response`] returned by the parser
     type Output: Response;
 
