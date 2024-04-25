@@ -37,8 +37,10 @@ pub mod response {
         pub mod unit;
         pub mod unsure;
     }
+    pub(crate) mod adaptersv2;
     pub(crate) mod prelude;
     pub(crate) mod traits;
+    pub(crate) mod traitsv2;
     pub(crate) mod util;
 }
 pub mod stream {
