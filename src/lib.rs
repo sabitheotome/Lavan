@@ -2,7 +2,7 @@
 #![cfg(feature = "experimental")]
 
 pub mod parser {
-    pub mod adapters {
+    pub(crate) mod adapters {
         pub mod and;
         pub mod as_ref;
         pub mod auto_bt;
@@ -29,7 +29,7 @@ pub mod parser {
     pub(crate) mod util;
 }
 pub mod response {
-    pub mod adapters {
+    pub(crate) mod adapters {
         pub mod bool;
         pub mod option;
         pub mod result;
@@ -38,8 +38,8 @@ pub mod response {
         pub mod unsure;
     }
     pub(crate) mod prelude;
-    pub mod traits;
-    pub mod util;
+    pub(crate) mod traits;
+    pub(crate) mod util;
 }
 pub mod stream {
     pub mod adapters;
