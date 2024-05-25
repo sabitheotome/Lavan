@@ -1,52 +1,69 @@
+use std::marker::PhantomData;
+
 use crate::parser::prelude::*;
 use crate::parser::sources::any_eq;
-use crate::response::prelude::*;
-use crate::stream::traits::Stream;
+use crate::output::prelude::*;
+use crate::input::prelude::*;
+
+use super::ignore::Discard;
 
 /// A util parser for expecting opening and closing delimiters around
 ///
 /// This `struct` is created by the [`Parser::delimited`] method on [`Parser`].
 /// See its documentation for more.
-pub struct Delimited<Par, Del> {
+pub struct Delimited<Par, Del0, Del1> {
     parser: Par,
-    open: Del,
-    close: Del,
+    open: Del0,
+    close: Del1,
 }
 
-impl<Par, Del> Delimited<Par, Del> {
-    pub(crate) fn new<First, Second>(parser: Par, open: Del, close: Del) -> Self
-    where
-        Par: Parser,
-        Par::Input: Stream<Token = Del>,
-        Del: PartialEq,
-        Option<Del>: Combinable<Par::Output, Output = First>,
-        First: Combinable<Option<Del>, Output = Second>,
-        Second: Response,
-    {
+impl<Par, Del0, Del1, First, Second> Delimited<Par, Del0, Del1>
+where
+    Par: Parser,
+    Del0: Parser<Input = Par::Input>,
+    Del1: Parser<Input = Par::Input>,
+    Del0::Output: Combine<Par::Output, Output = First>,
+    First: Combine<Del1::Output, Output = Second>,
+    Second: Response,
+{
+    pub(crate) fn new(parser: Par, open: Del0, close: Del1) -> Self {
         Self {
             parser,
             open,
             close,
         }
     }
+
+    pub(crate) fn discard_delimiters(self) -> Delimited<Par, Discard<Del0>, Discard<Del1>>
+    where
+        Del0::Output: Ignorable,
+        Del1::Output: Ignorable,
+    {
+        Delimited {
+            parser: self.parser,
+            open: self.open.discard(),
+            close: self.close.discard(),
+        }
+    }
 }
 
-impl<Par, Del, First, Second> Parser for Delimited<Par, Del>
+impl<Par, Del0, Del1, First, Second> Parser for Delimited<Par, Del0, Del1>
 where
     Par: Parser,
-    Par::Input: Stream<Token = Del>,
-    Del: PartialEq,
-    Option<Del>: Combinable<Par::Output, Output = First>,
-    First: Combinable<Option<Del>, Output = Second>,
+    Del0: Parser<Input = Par::Input>,
+    Del1: Parser<Input = Par::Input>,
+    Del0::Output: Combine<Par::Output, Output = First>,
+    First: Combine<Del1::Output, Output = Second>,
     Second: Response,
 {
     type Input = Par::Input;
     type Output = Second;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        crate::parser::sources::any_if(|e| *e == self.open)
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
+        self.open
+            .as_ref()
             .and(self.parser.as_ref())
-            .and(crate::parser::sources::any_if(|e| *e == self.open))
-            .parse_stream(input)
+            .and(self.close.as_ref())
+            .next(input)
     }
 }

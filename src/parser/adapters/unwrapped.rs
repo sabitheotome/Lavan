@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use crate::parser::prelude::*;
-use crate::response::prelude::*;
-use crate::stream::traits::Stream;
+use crate::output::prelude::*;
+use crate::input::prelude::*;
 
 /// Unwrap the inner value contained in the response, converting it to a infallible response
 ///
@@ -33,7 +33,7 @@ where
     type Input = Par::Input;
     type Output = <Par::Output as Fallible>::Infallible;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        <Par::Output as Fallible>::Infallible::from_value(self.parser.parse_stream(input).unwrap())
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
+        <Par::Output as Fallible>::Infallible::from_value(self.parser.next(input).unwrap())
     }
 }

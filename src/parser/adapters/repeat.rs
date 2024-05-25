@@ -1,7 +1,7 @@
 use crate::parser::prelude::*;
-use crate::response::prelude::*;
-use crate::response::util::try_op;
-use crate::stream::traits::Stream;
+use crate::output::prelude::*;
+use crate::output::util::try_op;
+use crate::input::prelude::*;
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
 
@@ -104,16 +104,16 @@ impl<Par, Col, Out> Parser for Repeat<Par, Col>
 where
     Par: Parser<Output = Out>,
     Col: Default + Extend<Out::Value>,
-    Out: Recoverable + Fallible,
+    Out: Fallible,
     Out::WithVal<Col>: Fallible<Value = Col>,
 {
     type Input = Par::Input;
     type Output = <Out::WithVal<Col> as Fallible>::Infallible;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         loop {
-            match self.parser().auto_bt().parse_stream(input).control_flow() {
+            match self.parser().auto_bt().next(input).control_flow() {
                 ControlFlow::Continue(val) => collector.extend([val]),
                 ControlFlow::Break(_) => return <Self::Output as Response>::from_value(collector),
             }
@@ -131,13 +131,13 @@ where
     type Input = Par::Input;
     type Output = Out::WithVal<Col>;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         loop {
-            if let None = input.peek() {
+            if let None = input.peekable().peek() {
                 return Self::Output::from_value(collector);
             }
-            collector.extend([try_op!(self.parser().parse_stream(input))]);
+            collector.extend([try_op!(self.parser().next(input))]);
         }
     }
 }
@@ -146,16 +146,16 @@ impl<Par, Col, Out> Parser for RepeatMax<Par, Col>
 where
     Par: Parser<Output = Out>,
     Col: Default + Extend<Out::Value>,
-    Out: Recoverable + Fallible,
+    Out: Fallible,
     Out::WithVal<Col>: Fallible<Value = Col, Error = Out::Error>,
 {
     type Input = Par::Input;
     type Output = <Out::WithVal<Col> as Fallible>::Infallible;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         for _ in 0..self.mode.0 {
-            match self.parser().auto_bt().parse_stream(input).control_flow() {
+            match self.parser().auto_bt().next(input).control_flow() {
                 ControlFlow::Continue(val) => collector.extend([val]),
                 ControlFlow::Break(_) => break,
             }
@@ -174,10 +174,10 @@ where
     type Input = Par::Input;
     type Output = Out::WithVal<Col>;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         for _ in 0..self.mode.0 {
-            collector.extend([try_op!(self.parser().parse_stream(input))])
+            collector.extend([try_op!(self.parser().next(input))])
         }
         Self::Output::from_value(collector)
     }
@@ -187,19 +187,19 @@ impl<Par, Col, Out> Parser for RepeatMin<Par, Col>
 where
     Par: Parser<Output = Out>,
     Col: Default + Extend<Out::Value>,
-    Out: Recoverable + Fallible,
+    Out: Fallible,
     Out::WithVal<Col>: Fallible<Value = Col, Error = Out::Error>,
 {
     type Input = Par::Input;
     type Output = Out::WithVal<Col>;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         for _ in 0..self.mode.0 {
-            collector.extend([try_op!(self.parser().parse_stream(input))])
+            collector.extend([try_op!(self.parser().next(input))])
         }
         loop {
-            match self.parser().auto_bt().parse_stream(input).control_flow() {
+            match self.parser().auto_bt().next(input).control_flow() {
                 ControlFlow::Continue(val) => collector.extend([val]),
                 ControlFlow::Break(_) => return Self::Output::from_value(collector),
             }
@@ -217,16 +217,24 @@ where
     type Input = Par::Input;
     type Output = Out::WithVal<Col>;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         for _ in 0..self.mode.0 {
-            collector.extend([try_op!(self.parser().parse_stream(input))])
+            collector.extend([try_op!(self.parser().next(input))])
         }
         loop {
-            if let None = input.peek() {
-                return Self::Output::from_value(collector);
+            match self.parser().next(input).control_flow() {
+                ControlFlow::Continue(value) => {
+                    collector.extend([value]);
+                }
+                ControlFlow::Break(error) => {
+                    if let None = input.next() {
+                        return Self::Output::from_value(collector);
+                    } else {
+                        return Self::Output::from_error(error);
+                    }
+                }
             }
-            collector.extend([try_op!(self.parser().parse_stream(input))]);
         }
     }
 }
@@ -238,31 +246,32 @@ where
     Par: Parser<Output = Out>,
     Int: Parser<Input = Par::Input>,
     Col: Default + Extend<Out::Value>,
-    Out: Response<Value = Col> + Recoverable,
-    Int::Output: Recoverable,
+    Out: Fallible,
+    Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
+    Int::Output: Fallible,
 {
     type Input = Par::Input;
-    type Output = Out;
+    type Output = Out::WithVal<Col>;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         let Inter(UntilErr(()), ref int) = self.mode;
         // first iteration
-        match self.parser().auto_bt().parse_stream(input).control_flow() {
+        match self.parser().auto_bt().next(input).control_flow() {
             ControlFlow::Continue(val) => collector.extend([val]),
-            ControlFlow::Break(err) => return Out::from_value(collector),
+            ControlFlow::Break(err) => return Self::Output::from_value(collector),
         }
         loop {
             // breaks if separator was found
             if let ControlFlow::Break(err) =
-                int.as_ref().auto_bt().parse_stream(input).control_flow()
+                int.as_ref().auto_bt().next(input).control_flow()
             {
                 break;
             }
             // expects main parser
-            collector.extend([try_op!(self.parser().parse_stream(input))])
+            collector.extend([try_op!(self.parser().next(input))])
         }
-        Out::from_value(collector)
+        Self::Output::from_value(collector)
     }
 }
 
@@ -271,34 +280,44 @@ where
     Par: Parser<Output = Out>,
     Int: Parser<Input = Par::Input>,
     Col: Default + Extend<Out::Value>,
-    Out: Response<Value = Col>,
-    Int::Output: Recoverable,
+    Out: Response,
+    Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
+    Int::Output: Fallible,
 {
     type Input = Par::Input;
-    type Output = Out;
+    type Output = Out::WithVal<Col>;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         let Inter(UntilEOI(()), ref int) = self.mode;
-        if let None = input.peek() {
-            return Out::from_value(collector);
-        }
-        match self.parser().parse_stream(input).control_flow() {
-            ControlFlow::Continue(val) => collector.extend([val]),
-            ControlFlow::Break(err) => return Out::from_value(collector),
+        match self.parser().next(input).control_flow() {
+            ControlFlow::Continue(value) => collector.extend([value]),
+            ControlFlow::Break(error) => {
+                if let None = input.next() {
+                    return Self::Output::from_value(collector);
+                } else {
+                    return Self::Output::from_error(error);
+                }
+            }
         }
         loop {
             if let ControlFlow::Break(err) =
-                int.as_ref().auto_bt().parse_stream(input).control_flow()
+                int.as_ref().auto_bt().next(input).control_flow()
             {
                 break;
             }
-            if let None = input.peek() {
-                return Out::from_value(collector);
+            match self.parser().next(input).control_flow() {
+                ControlFlow::Continue(value) => collector.extend([value]),
+                ControlFlow::Break(error) => {
+                    if let None = input.next() {
+                        return Self::Output::from_value(collector);
+                    } else {
+                        return Self::Output::from_error(error);
+                    }
+                }
             }
-            collector.extend([try_op!(self.parser().parse_stream(input))])
         }
-        Out::from_value(collector)
+        Self::Output::from_value(collector)
     }
 }
 
@@ -307,28 +326,29 @@ where
     Par: Parser<Output = Out>,
     Int: Parser<Input = Par::Input>,
     Col: Default + Extend<Out::Value>,
-    Out: Response<Value = Col> + Recoverable,
-    Int::Output: Recoverable,
+    Out: Fallible,
+    Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
+    Int::Output: Fallible,
 {
     type Input = Par::Input;
-    type Output = Out;
+    type Output = Out::WithVal<Col>;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         let Inter(Maximum(count), ref int) = self.mode;
-        match self.parser().auto_bt().parse_stream(input).control_flow() {
+        match self.parser().auto_bt().next(input).control_flow() {
             ControlFlow::Continue(val) => collector.extend([val]),
-            ControlFlow::Break(err) => return Out::from_value(collector),
+            ControlFlow::Break(err) => return Self::Output::from_value(collector),
         }
         for _ in 0..count - 1 {
             if let ControlFlow::Break(err) =
-                int.as_ref().auto_bt().parse_stream(input).control_flow()
+                int.as_ref().auto_bt().next(input).control_flow()
             {
                 break;
             }
-            collector.extend([try_op!(self.parser().parse_stream(input))])
+            collector.extend([try_op!(self.parser().next(input))])
         }
-        Out::from_value(collector)
+        Self::Output::from_value(collector)
     }
 }
 
@@ -337,21 +357,22 @@ where
     Par: Parser<Output = Out>,
     Int: Parser<Input = Par::Input>,
     Col: Default + Extend<Out::Value>,
-    Out: Response<Value = Col>,
-    Int::Output: Response<Error = Out::Error> + Recoverable,
+    Out: Response,
+    Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
+    Int::Output: Fallible<Error = Out::Error>,
 {
     type Input = Par::Input;
-    type Output = Out;
+    type Output = Out::WithVal<Col>;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         let Inter(Exact(count), ref int) = self.mode;
-        collector.extend([try_op!(self.parser().parse_stream(input))]);
+        collector.extend([try_op!(self.parser().next(input))]);
         for _ in 0..count - 1 {
-            try_op!(int.as_ref().auto_bt().parse_stream(input));
-            collector.extend([try_op!(self.parser().parse_stream(input))])
+            try_op!(int.as_ref().auto_bt().next(input));
+            collector.extend([try_op!(self.parser().next(input))])
         }
-        Out::from_value(collector)
+        Self::Output::from_value(collector)
     }
 }
 
@@ -360,29 +381,30 @@ where
     Par: Parser<Output = Out>,
     Int: Parser<Input = Par::Input>,
     Col: Default + Extend<Out::Value>,
-    Out: Response<Value = Col>,
-    Int::Output: Response<Error = Out::Error> + Recoverable,
+    Out: Response,
+    Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
+    Int::Output: Fallible<Error = Out::Error>,
 {
     type Input = Par::Input;
-    type Output = Out;
+    type Output = Out::WithVal<Col>;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         let Inter(Minimum(count), ref int) = self.mode;
-        collector.extend([try_op!(self.parser().parse_stream(input))]);
+        collector.extend([try_op!(self.parser().next(input))]);
         for _ in 0..count - 1 {
-            try_op!(int.as_ref().auto_bt().parse_stream(input));
-            collector.extend([try_op!(self.parser().parse_stream(input))])
+            try_op!(int.as_ref().auto_bt().next(input));
+            collector.extend([try_op!(self.parser().next(input))])
         }
         loop {
             if let ControlFlow::Break(err) =
-                int.as_ref().auto_bt().parse_stream(input).control_flow()
+                int.as_ref().auto_bt().next(input).control_flow()
             {
                 break;
             }
-            collector.extend([try_op!(self.parser().parse_stream(input))])
+            collector.extend([try_op!(self.parser().next(input))])
         }
-        Out::from_value(collector)
+        Self::Output::from_value(collector)
     }
 }
 
@@ -391,32 +413,39 @@ where
     Par: Parser<Output = Out>,
     Int: Parser<Input = Par::Input>,
     Col: Default + Extend<Out::Value>,
-    Out: Response<Value = Col>,
-    Int::Output: Response<Error = Out::Error> + Recoverable,
+    Out: Response,
+    Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
+    Int::Output: Fallible<Error = Out::Error>,
 {
     type Input = Par::Input;
-    type Output = Out;
+    type Output = Out::WithVal<Col>;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         let mut collector = Col::default();
         let Inter(MinimumEOI(count), ref int) = self.mode;
-        collector.extend([try_op!(self.parser().parse_stream(input))]);
+        collector.extend([try_op!(self.parser().next(input))]);
         for _ in 0..count - 1 {
-            try_op!(int.as_ref().auto_bt().parse_stream(input));
-            collector.extend([try_op!(self.parser().parse_stream(input))])
+            try_op!(int.as_ref().auto_bt().next(input));
+            collector.extend([try_op!(self.parser().next(input))])
         }
         loop {
             if let ControlFlow::Break(err) =
-                int.as_ref().auto_bt().parse_stream(input).control_flow()
+                int.as_ref().auto_bt().next(input).control_flow()
             {
                 break;
             }
-            if let None = input.peek() {
-                return Out::from_value(collector);
+            match self.parser().next(input).control_flow() {
+                ControlFlow::Continue(value) => collector.extend([value]),
+                ControlFlow::Break(error) => {
+                    if let None = input.next() {
+                        return Self::Output::from_value(collector);
+                    } else {
+                        return Self::Output::from_error(error);
+                    }
+                }
             }
-            collector.extend([try_op!(self.parser().parse_stream(input))])
         }
-        Out::from_value(collector)
+        Self::Output::from_value(collector)
     }
 }
 

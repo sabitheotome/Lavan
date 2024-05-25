@@ -1,6 +1,6 @@
+use crate::input::prelude::*;
+use crate::output::prelude::*;
 use crate::parser::prelude::*;
-use crate::response::prelude::*;
-use crate::stream::traits::Stream;
 
 /// A parser for alternating two parsers through [`Switchable`]
 ///
@@ -17,8 +17,7 @@ impl<Par0, Par1> Or<Par0, Par1> {
     where
         Par0: Parser,
         Par1: Parser<Input = Par0::Input>,
-        Par0::Output:
-            Switchable<<Par1::Output as Response>::WithVal<<Par0::Output as Response>::Value>>,
+        //Par0::Output: Switchable<<Par1::Output as Response>::WithVal<<Par0::Output as Response>::Value>>,
     {
         Or { parser0, parser1 }
     }
@@ -32,22 +31,16 @@ impl<Par0, Par1> Or<Par0, Par1> {
     pub fn either(
         &self,
     ) -> Or<
-        impl Parser<
-                Output = <Par0::Output as Response>::WithVal<Either<val![Par0], val![Par1]>>,
-                Input = Par0::Input,
-            > + '_,
-        impl Parser<
-                Output = <Par1::Output as Response>::WithVal<Either<val![Par0], val![Par1]>>,
-                Input = Par1::Input,
-            > + '_,
+        impl Parser<Output = val![Par0<Either<val![Par0], val![Par1]>>], Input = Par0::Input> + '_,
+        impl Parser<Output = val![Par1<Either<val![Par0], val![Par1]>>], Input = Par1::Input> + '_,
     >
     where
         Par0: Parser,
         Par0::Output: ValueFunctor,
         Par1: Parser,
         Par1::Output: ValueFunctor,
-        <Par0::Output as Response>::WithVal<Either<val![Par0], val![Par1]>>:
-            Switchable<<Par1::Output as Response>::WithVal<Either<val![Par0], val![Par1]>>>,
+        val![Par0<Either<val![Par0], val![Par1]>>]:
+            Switch<val![Par1<Either<val![Par0], val![Par1]>>]>,
     {
         let parser0 = self
             .parser0
@@ -65,17 +58,16 @@ impl<Par0, Par1> Parser for Or<Par0, Par1>
 where
     Par0: Parser,
     Par1: Parser<Input = Par0::Input>,
-    Par0::Output: Switchable<Par1::Output>,
+    Par0::Output: Switch<Par1::Output>,
 {
     type Input = Par0::Input;
-    type Output = <Par0::Output as Switchable<Par1::Output>>::Output;
+    type Output = <Par0::Output as Switch<Par1::Output>>::Output;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        let offset = input.offset();
-        self.parser0.parse_stream(input).disjoin_response(
-            |str| self.parser1.parse_stream(str),
-            |str| *str.offset_mut() = offset,
-            input,
-        )
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
+        let mut save_state = input.savestate();
+        self.parser0.next(input).switch(|| {
+            input.backtrack(save_state);
+            self.parser1.next(input)
+        })
     }
 }

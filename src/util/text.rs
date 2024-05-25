@@ -1,4 +1,4 @@
-use crate::{prelude::*, stream::traits::StrStream};
+use crate::prelude::*;
 
 pub fn string<'a, I: 'a + StrStream<'a>>(
     quotation_mark: char,
@@ -6,18 +6,18 @@ pub fn string<'a, I: 'a + StrStream<'a>>(
     any_ne(quotation_mark)
         .discard()
         .repeat()
-        .delimited(quotation_mark, quotation_mark)
+        .delimited(any_eq(quotation_mark), any_eq(quotation_mark))
         .discard()
         .slice()
 }
 
-pub fn word<'a, I: 'a + StrStream<'a, Offset = usize>>(
+pub fn word<'a, I: 'a + StrStream<'a>>(
     word: &'a str,
 ) -> impl 'a + Parser<Input = I, Output = Option<&'a str>> {
     take(word.len()).eq(word)
 }
 
-pub fn keyword<'a, I: 'a + StrStream<'a, Offset = usize>>(
+pub fn keyword<'a, I: 'a + StrStream<'a>>(
     keyword: &'a str,
 ) -> impl 'a + Parser<Input = I, Output = Option<&'a str>> {
     word(keyword).and(
@@ -27,7 +27,7 @@ pub fn keyword<'a, I: 'a + StrStream<'a, Offset = usize>>(
     )
 }
 
-pub fn ascii_keyword<'a, I: 'a + StrStream<'a, Offset = usize>>(
+pub fn ascii_keyword<'a, I: 'a + StrStream<'a>>(
     keyword: &'a str,
 ) -> impl 'a + Parser<Input = I, Output = Option<&'a str>> {
     word(keyword).and(
@@ -37,7 +37,7 @@ pub fn ascii_keyword<'a, I: 'a + StrStream<'a, Offset = usize>>(
     )
 }
 
-pub fn identifier<'a, I: StrStream<'a>>() -> impl Parser<Input = I, Output = Option<&'a str>> {
+pub fn identifier<'a, I: 'a + StrStream<'a>>() -> impl Parser<Input = I, Output = Option<&'a str>> {
     any_if(|c: &char| c.is_alphabetic())
         .or(any_eq('_'))
         .discard()
@@ -50,8 +50,8 @@ pub fn identifier<'a, I: StrStream<'a>>() -> impl Parser<Input = I, Output = Opt
         .slice()
 }
 
-pub fn ascii_identifier<'a, I: StrStream<'a>>() -> impl Parser<Input = I, Output = Option<&'a str>>
-{
+pub fn ascii_identifier<'a, I: 'a + StrStream<'a>>(
+) -> impl Parser<Input = I, Output = Option<&'a str>> {
     any_if(char::is_ascii_alphabetic)
         .or(any_eq('_'))
         .discard()
@@ -72,7 +72,8 @@ pub fn ascii_trim<'a, I: StrStream<'a>>() -> impl Parser<Input = I, Output = ()>
     any_if(char::is_ascii_whitespace).discard().repeat()
 }
 
-pub fn decimal_float<'a, I: StrStream<'a>>() -> impl Parser<Input = I, Output = Option<&'a str>> {
+pub fn decimal_float<'a, I: 'a + StrStream<'a>>() -> impl Parser<Input = I, Output = Option<&'a str>>
+{
     any_if(char::is_ascii_digit)
         .discard()
         .repeat()
@@ -81,7 +82,7 @@ pub fn decimal_float<'a, I: StrStream<'a>>() -> impl Parser<Input = I, Output = 
         .slice()
 }
 
-pub fn hexadecimal_integer<'a, I: StrStream<'a>>(
+pub fn hexadecimal_integer<'a, I: 'a + StrStream<'a>>(
 ) -> impl Parser<Input = I, Output = Option<&'a str>> {
     any_if(char::is_ascii_hexdigit)
         .discard()
@@ -89,11 +90,12 @@ pub fn hexadecimal_integer<'a, I: StrStream<'a>>(
         .slice()
 }
 
-pub fn decimal_integer<'a, I: StrStream<'a>>() -> impl Parser<Input = I, Output = Option<&'a str>> {
+pub fn decimal_integer<'a, I: 'a + StrStream<'a>>(
+) -> impl Parser<Input = I, Output = Option<&'a str>> {
     any_if(char::is_ascii_digit).discard().repeat_min(1).slice()
 }
 
-pub fn radix_integer<'a, I: StrStream<'a>>(
+pub fn radix_integer<'a, I: 'a + StrStream<'a>>(
     radix: u32,
 ) -> impl Parser<Input = I, Output = Option<&'a str>> {
     any_if(move |c: &char| c.is_digit(radix))

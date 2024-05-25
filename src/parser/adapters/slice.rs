@@ -1,8 +1,9 @@
+use crate::input::prelude::*;
 use crate::parser::prelude::*;
-use crate::response::prelude::*;
-use crate::response::util::try_op;
-use crate::stream::traits::{Stream, StreamSlice};
+use crate::output::prelude::*;
+use crate::output::util::try_op;
 use std::marker::PhantomData;
+use std::ops::RangeTo;
 
 /// A parser that yields the slice of the operation
 ///
@@ -19,7 +20,7 @@ impl<'a, Par> Slice<'a, Par> {
     pub fn new(parser: Par) -> Self
     where
         Par: Parser,
-        Par::Input: StreamSlice<'a>,
+        Par::Input: ScannerSlice,
         Par::Output: Attachable,
     {
         Self {
@@ -32,18 +33,18 @@ impl<'a, Par> Slice<'a, Par> {
 impl<'a, Par, Slc> Parser for Slice<'a, Par>
 where
     Par: Parser,
-    Par::Input: StreamSlice<'a, Slice = Slc>,
+    Par::Input: 'a + ScannerSlice<Slice = Slc>,
     Par::Output: Attachable,
+    Slc: 'a,
 {
     type Input = Par::Input;
     type Output = <Par::Output as Attachable>::Output<Slc>;
 
     #[inline]
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        let start = input.offset();
-        let result = self.parser.parse_stream(input);
-        let end = input.offset();
-
-        result.attach_to_response(|| input.slice(start, end))
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
+        let slice_builder = input.slice_offset();
+        let result = self.parser.next(input);
+        let slice = input.slice_since(slice_builder);
+        result.attach_to_response(move || slice)
     }
 }

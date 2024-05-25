@@ -1,6 +1,6 @@
+use crate::input::prelude::*;
+use crate::output::prelude::*;
 use crate::parser::prelude::*;
-use crate::response::prelude::*;
-use crate::stream::traits::Stream;
 
 /// A parser for ignoring the [`Response::Value`] through [`Ignorable`]
 ///
@@ -29,7 +29,7 @@ where
     type Input = Par::Input;
     type Output = <Par::Output as Ignorable>::Output;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        self.parser.parse_stream(input).ignore_response()
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
+        self.parser.next(input).ignore_response()
     }
 }

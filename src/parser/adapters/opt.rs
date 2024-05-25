@@ -1,6 +1,6 @@
 use crate::parser::prelude::*;
-use crate::response::prelude::*;
-use crate::stream::traits::Stream;
+use crate::output::prelude::*;
+use crate::input::prelude::*;
 
 /// A parser for transforming [`Fallible`]s into Infallible responses
 ///
@@ -15,7 +15,7 @@ impl<Par> Opt<Par> {
     pub(crate) fn new(parser: Par) -> Self
     where
         Par: Parser,
-        Par::Output: Optionable,
+        Par::Output: Fallible,
     {
         Self { parser }
     }
@@ -24,16 +24,16 @@ impl<Par> Opt<Par> {
 impl<Par> Parser for Opt<Par>
 where
     Par: Parser,
-    Par::Output: Optionable,
+    Par::Output: Fallible,
 {
     type Input = Par::Input;
-    type Output = <Par::Output as Optionable>::Output;
+    type Output = <Par::Output as Fallible>::Optional;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         self.parser
             .as_ref()
             .auto_bt()
-            .parse_stream(input)
-            .opt_response()
+            .next(input)
+            .optional()
     }
 }

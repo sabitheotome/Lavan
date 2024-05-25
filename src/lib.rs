@@ -28,7 +28,7 @@ pub mod parser {
     pub mod traits;
     pub(crate) mod util;
 }
-pub mod response {
+pub mod output {
     pub(crate) mod adapters {
         pub mod bool;
         pub mod option;
@@ -37,14 +37,16 @@ pub mod response {
         pub mod unit;
         pub mod unsure;
     }
-    pub(crate) mod adaptersv2;
     pub(crate) mod prelude;
     pub(crate) mod traits;
-    pub(crate) mod traitsv2;
     pub(crate) mod util;
 }
-pub mod stream {
-    pub mod adapters;
+pub mod input {
+    pub mod adapters {
+        pub mod cursor;
+    }
+    pub mod impls;
+    pub mod prelude;
     pub mod traits;
 }
 pub mod util {

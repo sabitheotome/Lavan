@@ -1,6 +1,6 @@
+use crate::input::prelude::*;
+use crate::output::prelude::*;
 use crate::parser::prelude::*;
-use crate::response::prelude::*;
-use crate::stream::traits::Stream;
 
 /// A parser for taking another parser by reference
 ///
@@ -27,7 +27,19 @@ where
     type Input = Par::Input;
     type Output = Par::Output;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        self.parser.parse_stream(input)
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
+        self.parser.next(input)
+    }
+}
+
+impl<'a, Par> IntoParser<<AsRef<'a, Par> as Parser>::Input, <AsRef<'a, Par> as Parser>::Output>
+    for AsRef<'a, Par>
+where
+    Par: Parser,
+{
+    type IntoParser = Self;
+
+    fn into_parser(self) -> Self::IntoParser {
+        self
     }
 }

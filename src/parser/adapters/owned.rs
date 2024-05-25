@@ -1,6 +1,6 @@
 use crate::parser::prelude::*;
-use crate::response::prelude::*;
-use crate::stream::traits::Stream;
+use crate::output::prelude::*;
+use crate::input::prelude::*;
 
 /// A parser for converting the value of the response into its Owned version
 ///
@@ -30,9 +30,9 @@ where
     type Input = Par::Input;
     type Output = <Par::Output as Response>::WithVal<<Val as std::borrow::ToOwned>::Owned>;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         self.parser
-            .parse_stream(input)
+            .next(input)
             .map(|value| value.to_owned())
     }
 }

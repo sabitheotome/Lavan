@@ -1,7 +1,7 @@
 use crate::parser::prelude::*;
-use crate::response::prelude::*;
-use crate::response::util::try_op;
-use crate::stream::traits::Stream;
+use crate::output::prelude::*;
+use crate::output::util::try_op;
+use crate::input::prelude::*;
 use std::marker::PhantomData;
 
 /// A parser for flat-mapping responses
@@ -18,7 +18,7 @@ impl<Par, Fun> Then<Par, Fun> {
     pub(crate) fn new(parser: Par, function: Fun) -> Self
     where
         Par: Parser,
-        Par::Output: Bindable<Fun>,
+        Par::Output: Apply<Fun>,
     {
         Self { parser, function }
     }
@@ -27,12 +27,12 @@ impl<Par, Fun> Then<Par, Fun> {
 impl<Par, Fun> Parser for Then<Par, Fun>
 where
     Par: Parser,
-    Par::Output: Bindable<Fun>,
+    Par::Output: Apply<Fun>,
 {
     type Input = Par::Input;
-    type Output = <Par::Output as Bindable<Fun>>::Output;
+    type Output = <Par::Output as Apply<Fun>>::Output;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        self.parser.parse_stream(input).bind(&self.function)
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
+        self.parser.next(input).apply(&self.function)
     }
 }

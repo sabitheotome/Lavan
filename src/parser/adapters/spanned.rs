@@ -1,6 +1,6 @@
+use crate::input::prelude::*;
+use crate::output::prelude::*;
 use crate::parser::prelude::*;
-use crate::response::prelude::*;
-use crate::stream::traits::Stream;
 
 /// A parser for attaching the span of offsets to the reponse
 ///
@@ -14,6 +14,7 @@ impl<Par> Spanned<Par> {
     pub(crate) fn new(parser: Par) -> Self
     where
         Par: Parser,
+        Par::Input: ScannerSpan,
         Par::Output: ValueFunctor,
     {
         Self { parser }
@@ -23,23 +24,16 @@ impl<Par> Spanned<Par> {
 impl<Par, Val> Parser for Spanned<Par>
 where
     Par: Parser,
+    Par::Input: ScannerSpan,
     Par::Output: ValueFunctor<Value = Val>,
 {
     type Input = Par::Input;
-    type Output = <Par::Output as Response>::WithVal<(
-        Val,
-        (
-            <Self::Input as Stream>::Offset,
-            <Self::Input as Stream>::Offset,
-        ),
-    )>;
+    type Output = <Par::Output as Response>::WithVal<(Val, <Par::Input as ScannerSpan>::Span)>;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        let start = input.offset();
-        self.parser.parse_stream(input).map(|value| {
-            let end = input.offset();
-            let span = (start, end);
-            (value, span)
-        })
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
+        let start = input.span_offset();
+        self.parser
+            .next(input)
+            .map(|value| (value, input.span_since(start)))
     }
 }

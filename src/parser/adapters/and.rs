@@ -1,7 +1,7 @@
+use crate::input::prelude::*;
+use crate::output::prelude::*;
 use crate::parser::prelude::*;
 use crate::parser::util::assoc::err;
-use crate::response::prelude::*;
-use crate::stream::traits::Stream;
 
 /// A parser for combining two parsers through [`Combinable`].
 ///
@@ -18,19 +18,17 @@ impl<Par0, Par1> And<Par0, Par1> {
     where
         Par0: Parser,
         Par1: Parser<Input = Par0::Input>,
-        Par0::Output: Combinable<Par1::Output>,
+        Par0::Output: Combine<Par1::Output>,
     {
         And { parser0, parser1 }
     }
-}
 
-impl<Par0, Par1> And<Par0, Par1> {
     #[cfg(feature = "either")]
     pub fn either_err<'a>(&'a self) -> And<impl Parser + 'a, impl Parser + 'a>
     where
         Par0: Parser,
-        Par0::Output: 'a + ErrorFunctor,
         Par1: Parser,
+        Par0::Output: 'a + ErrorFunctor,
         Par1::Output: 'a + ErrorFunctor,
     {
         use either::Either;
@@ -52,14 +50,14 @@ impl<Par0, Par1> Parser for And<Par0, Par1>
 where
     Par0: Parser,
     Par1: Parser<Input = Par0::Input>,
-    Par0::Output: Combinable<Par1::Output>,
+    Par0::Output: Combine<Par1::Output>,
 {
     type Input = Par0::Input;
-    type Output = <Par0::Output as Combinable<Par1::Output>>::Output;
+    type Output = <Par0::Output as Combine<Par1::Output>>::Output;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         self.parser0
-            .parse_stream(input)
-            .combine_response(|| self.parser1.parse_stream(input))
+            .next(input)
+            .combine(|| self.parser1.next(input))
     }
 }

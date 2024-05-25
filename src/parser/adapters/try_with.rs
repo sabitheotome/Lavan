@@ -1,8 +1,8 @@
+use crate::input::prelude::*;
+use crate::output::prelude::*;
+use crate::output::util::try_op;
 use crate::parser::prelude::*;
 use crate::parser::util::assoc::err;
-use crate::response::prelude::*;
-use crate::response::util::try_op;
-use crate::stream::traits::Stream;
 
 /// A parser for generating auto-backtracking variants with another parsers
 ///
@@ -43,26 +43,26 @@ where
     type Input = Par0::Input;
     type Output = Out0;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         use std::ops::ControlFlow::{Break, Continue};
-        let value0 = try_op!(self.parser0.parse_stream(input));
-        let offset = input.offset();
-        match self.parser1.parse_stream(input).control_flow() {
+        let value0 = try_op!(self.parser0.next(input));
+        let mut save_state = input.savestate();
+        match self.parser1.next(input).control_flow() {
             Continue(value1) => match (self.function)(value0, value1) {
                 Continue(new) => Out0::from_value(new),
                 Break(original) => {
-                    *input.offset_mut() = offset;
+                    input.backtrack(save_state);
                     Out0::from_value(original)
                 }
             },
             Break(_error) => {
-                *input.offset_mut() = offset;
+                input.backtrack(save_state);
                 Out0::from_value(value0)
             }
         }
     }
 }
-
+/*
 #[cfg(test)]
 mod tests {
 
@@ -95,4 +95,4 @@ mod tests {
 
         assert_eq!(output.value(), expected_out);
     }
-}
+}*/

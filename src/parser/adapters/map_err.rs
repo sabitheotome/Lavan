@@ -1,6 +1,6 @@
 use crate::parser::prelude::*;
-use crate::response::prelude::*;
-use crate::stream::traits::Stream;
+use crate::output::prelude::*;
+use crate::input::prelude::*;
 
 // TODO: Documentation
 pub type FnMapErr<Par, Val0, Val1> = MapErr<Par, fn(Val0) -> Val1>;
@@ -33,9 +33,9 @@ where
     type Input = Par::Input;
     type Output = <Par::Output as ErrMappable<Fun>>::Output;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         self.parser
-            .parse_stream(input)
+            .next(input)
             .err_map_response(&self.function)
     }
 }

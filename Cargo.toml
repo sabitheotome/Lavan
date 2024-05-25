@@ -9,8 +9,12 @@ edition = "2021"
 
 [dependencies]
 either = { version = "1.9.0", optional = true }
+derive_more = "0.99.17"
 
 [features]
 default = ["either"]
 either = ["dep:either"]
 experimental = []
+
+[profile.dev]
+opt-level = 2

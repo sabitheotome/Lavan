@@ -1,35 +1,40 @@
-use super::adapters::{
-    and::And,
-    as_ref::AsRef,
-    auto_bt::AutoBt,
-    delimited::Delimited,
-    eq::{Eq, Ne},
-    filter::{Filter, FilterNot},
-    ignore::Discard,
-    map::Map,
-    map_err::MapErr,
-    opt::Opt,
-    or::Or,
-    owned::Owned,
-    parse_str::ParseStr,
-    repeat::{mode::*, *},
-    slice::Slice,
-    spanned::Spanned,
-    then::Then,
-    try_with::TryWith,
-    unwrapped::Unwrapped,
-};
+use super::sources::adapters::{Any, Func};
 use super::util::assoc::{err, val};
-use crate::stream::traits::{IntoStream, Stream};
-use crate::{response::prelude::*, stream::traits::StreamSlice};
+use super::{
+    adapters::{
+        and::And,
+        as_ref::AsRef,
+        auto_bt::AutoBt,
+        delimited::Delimited,
+        eq::{Eq, Ne},
+        filter::{Filter, FilterNot},
+        ignore::Discard,
+        map::Map,
+        map_err::MapErr,
+        opt::Opt,
+        or::Or,
+        owned::Owned,
+        parse_str::ParseStr,
+        repeat::{mode::*, *},
+        slice::Slice,
+        spanned::Spanned,
+        then::Then,
+        try_with::TryWith,
+        unwrapped::Unwrapped,
+    },
+    sources::{any, func},
+};
+use crate::input::prelude::*;
+use crate::output::prelude::*;
+use crate::prelude::identifier;
 
 pub trait Parser {
-    /// The input [`Stream`] iterated by the parser
-    type Input: Stream;
+    /// The input [`Scanner`] iterated by the parser
+    type Input: Scanner;
     /// The output [`Response`] returned by the parser
     type Output: Response;
 
-    /// Parsers the referenced `input`, advancing the stream
+    /// Partially parses the referenced `input`, advancing the stream
     ///
     /// # Examples
     /// Basic usage:
@@ -38,10 +43,10 @@ pub trait Parser {
     /// use lavan::stream::traits::IntoStream;
     ///
     /// let mut stream = "Hello, World!".into_stream();
-    /// let first_char = any().parse_stream(&mut stream);
+    /// let first_char = any().next(&mut stream);
     /// assert_eq!(first_char, Some('H'));
     /// ```
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output;
+    fn next(&self, input: &mut Self::Input) -> Self::Output;
 
     /// Parses the token sequence `input`
     ///
@@ -54,8 +59,8 @@ pub trait Parser {
     /// let first_char = any().evaluate(input);
     /// assert_eq!(first_char, Some('H'));
     /// ```
-    fn evaluate(&self, input: impl IntoStream<Stream = Self::Input>) -> Self::Output {
-        self.parse_stream(&mut input.into_stream())
+    fn evaluate(&self, input: impl IntoScanner<IntoScanner = Self::Input>) -> Self::Output {
+        self.next(&mut input.into_scanner())
     }
 
     /// Take this parser by reference, without consuming it.
@@ -148,7 +153,7 @@ pub trait Parser {
     fn then<Fun>(self, f: Fun) -> Then<Self, Fun>
     where
         Self: Sized,
-        Self::Output: Bindable<Fun>,
+        Self::Output: Apply<Fun>,
     {
         Then::new(self, f)
     }
@@ -205,7 +210,7 @@ pub trait Parser {
     fn auto_bt(self) -> AutoBt<Self>
     where
         Self: Sized,
-        Self::Output: Recoverable,
+        Self::Output: Fallible,
     {
         AutoBt::new(self)
     }
@@ -230,7 +235,7 @@ pub trait Parser {
     fn opt(self) -> Opt<Self>
     where
         Self: Sized,
-        Self::Output: Optionable,
+        Self::Output: Fallible,
     {
         Opt::new(self)
     }
@@ -251,7 +256,7 @@ pub trait Parser {
     fn slice<'a>(self) -> Slice<'a, Self>
     where
         Self: Sized,
-        Self::Input: StreamSlice<'a>,
+        Self::Input: ScannerSlice,
         Self::Output: Attachable,
     {
         Slice::new(self)
@@ -357,11 +362,23 @@ pub trait Parser {
         self.eq(v).not()
     }
 
-    // TODO: Documentation
+    /// Convert the value contained in the [Output](Parser::Output) into `T`
+    /// where `T` implements [FromStr](std::str::FromStr).
+    ///
+    // TODO: # Examples
+    // Basic usage:
+    //```
+    // use lavan::prelude::*;
+    //
+    // let input = "7";
+    // let digit_to_u32 : Result<u32, ParseIntError> = any().slice()
+    //     .parse_str::<u32>().evaluate(input);
+    // assert_eq!(digit_to_u32, Some(7));
+    // ```
     fn parse_str<T>(self) -> ParseStr<Self, T>
     where
         Self: Sized,
-        Self::Output: Bindable<fn(&str) -> Result<T, T::Err>>,
+        Self::Output: Apply<fn(&str) -> Result<T, T::Err>>,
         T: std::str::FromStr,
     {
         ParseStr::new(self)
@@ -391,19 +408,24 @@ pub trait Parser {
     fn spanned(self) -> Spanned<Self>
     where
         Self: Sized,
+        Self::Input: ScannerSpan,
         Self::Output: ValueFunctor,
     {
         Spanned::new(self)
     }
 
     // TODO: Documentation
-    fn delimited<Del, First, Second>(self, open: Del, close: Del) -> Delimited<Self, Del>
+    fn delimited<Del0, Del1, First, Second>(
+        self,
+        open: Del0,
+        close: Del1,
+    ) -> Delimited<Self, Del0, Del1>
     where
         Self: Sized,
-        Self::Input: Stream<Token = Del>,
-        Del: PartialEq,
-        Option<Del>: Combinable<Self::Output, Output = First>,
-        First: Combinable<Option<Del>, Output = Second>,
+        Del0: Parser<Input = Self::Input>,
+        Del1: Parser<Input = Self::Input>,
+        Del0::Output: Combine<Self::Output, Output = First>,
+        First: Combine<Del1::Output, Output = Second>,
         Second: Response,
     {
         Delimited::new(self, open, close)
@@ -426,7 +448,7 @@ pub trait Parser {
     fn and<Par>(self, parser: Par) -> And<Self, Par>
     where
         Self: Sized,
-        Self::Output: Combinable<Par::Output>,
+        Self::Output: Combine<Par::Output>,
         Par: Parser<Input = Self::Input>,
     {
         And::new(self, parser)
@@ -470,8 +492,7 @@ pub trait Parser {
     fn or<Par>(self, parser: Par) -> Or<Self, Par>
     where
         Self: Sized,
-        Self::Output:
-            Switchable<<Par::Output as Response>::WithVal<<Self::Output as Response>::Value>>,
+        //Self::Output: Switchable<<Par::Output as Response>::WithVal<<Self::Output as Response>::Value>>,
         Par: Parser<Input = Self::Input>,
     {
         Or::new(self, parser)
@@ -519,7 +540,7 @@ pub trait Parser {
     ///     .to_vec()
     ///     .evaluate(input);
     /// assert_eq!(output.value(), expected_out);
-    //```
+    ///```
     fn try_with<Par, Fun, Out0, Out1>(self, parser: Par, function: Fun) -> TryWith<Self, Par, Fun>
     where
         Self: Sized + Parser<Output = Out0>,
@@ -535,7 +556,7 @@ pub trait Parser {
     fn repeat(self) -> Repeat<Self>
     where
         Self: Sized,
-        Self::Output: Recoverable + Fallible,
+        Self::Output: Fallible,
     {
         Repeat::new(self, UntilErr(()))
     }
@@ -587,66 +608,81 @@ pub trait Parser {
     }
 }
 
-impl<Out: Response, Str: Stream> Parser for fn(&mut Str) -> Out {
-    type Input = Str;
-    type Output = Out;
-
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        self(input)
-    }
-}
-
-impl<Out: Response, Str: Stream, T> Parser for (T, fn(&T, &mut Str) -> Out) {
-    type Input = Str;
-    type Output = Out;
-
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        (self.1)(&self.0, input)
-    }
-}
-
 impl<Par: Parser> Parser for fn() -> Par {
     type Input = Par::Input;
     type Output = Par::Output;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        self().parse_stream(input)
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
+        self().next(input)
     }
 }
 
-pub trait Parse {
-    type Input: Stream;
-    type Output: ValueFunctor<Value = Self>;
+pub trait IntoParser<Input, Output>
+where
+    Input: Scanner,
+    Output: Response,
+{
+    type IntoParser: Parser<Input = Input, Output = Output>;
 
-    fn parse(input: &mut Self::Input) -> Self::Output;
+    fn into_parser(self) -> Self::IntoParser;
 }
 
-// TODO: highly experimental
-/*impl<T> Parse for Option<T>
+impl<F, Input, Output> IntoParser<Input, Output> for F
 where
-    T: Parse,
-    T::Output: Optionable<Output = Sure<Option<T>>>,
+    F: Fn(&mut Input) -> Output,
+    Input: Scanner,
+    Output: Response,
 {
-    type Input = T::Input;
+    type IntoParser = Func<Self, Input, Output>;
+
+    fn into_parser(self) -> Self::IntoParser {
+        func(self)
+    }
+}
+
+pub trait Parse<Input>
+where
+    Input: Scanner,
+{
+    type Output: ValueFunctor<Value = Self>;
+
+    fn parse(input: &mut Input) -> Self::Output;
+
+    fn parser() -> impl Parser<Input = Input, Output = Self::Output> {
+        func(Self::parse)
+    }
+}
+
+impl<Input, T> Parse<Input> for Option<T>
+where
+    Input: Scanner,
+    T: Parse<Input>,
+    T::Output: Fallible<Optional = Sure<Option<T>>>,
+{
     type Output = Sure<Self>;
 
-    fn parse(input: &mut Self::Input) -> Self::Output {
-        T::parse(input).opt_response()
+    fn parse(input: &mut Input) -> Self::Output {
+        T::parser().opt().next(input)
     }
 }
 
 #[cfg(feature = "either")]
-impl<L, R> Parse for either::Either<L, R>
+impl<Input, L, R> Parse<Input> for either::Either<L, R>
 where
-    L: Parse,
-    R: Parse<Input = L::Input, Output = L::Output>,
-    L::Input: Stream,
-    L::Output: Switchable<L::Output, Output = Sure<either::Either<L, R>>>,
+    Input: Scanner,
+    L: Parse<Input>,
+    R: Parse<Input, Output = L::Output>,
+    L::Output: Switch<R::Output>,
+
+    val![L<either::Either<val![L], val![R]>>]:
+        Switch<val![R<either::Either<val![L], val![R]>>], Output = Sure<either::Either<L, R>>>,
 {
-    type Input = L::Input;
     type Output = Sure<Self>;
 
-    fn parse(input: &mut Self::Input) -> Self::Output {
-        L::parse.or(R::parse).either().parse_stream(input)
+    fn parse(input: &mut Input) -> Self::Output {
+        super::sources::make::<Input, L>()
+            .or(super::sources::make::<Input, R>())
+            .either()
+            .next(input)
     }
-}*/
+}

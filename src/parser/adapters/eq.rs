@@ -1,7 +1,7 @@
 use crate::parser::prelude::*;
-use crate::response::prelude::*;
-use crate::response::util::try_op;
-use crate::stream::traits::Stream;
+use crate::output::prelude::*;
+use crate::output::util::try_op;
+use crate::input::prelude::*;
 
 /// A marker for defining a response in case the equallity check fails
 pub struct OrElse<Res, Err>(Res, std::marker::PhantomData<Err>);
@@ -84,9 +84,9 @@ where
     type Input = Par::Input;
     type Output = <Out as Filterable>::Output;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         self.parser
-            .parse_stream(input)
+            .next(input)
             .filter_response(|v| *v == self.value)
     }
 }
@@ -101,9 +101,9 @@ where
     type Input = Par::Input;
     type Output = <Out as FilterableWithErr<Err>>::Output;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         self.parser
-            .parse_stream(input)
+            .next(input)
             .filter_response_or_else(|v| *v == self.value, &self.mode.0)
     }
 }
@@ -117,9 +117,9 @@ where
     type Input = Par::Input;
     type Output = <Out as Filterable>::Output;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         self.parser
-            .parse_stream(input)
+            .next(input)
             .filter_response(|v| *v != self.value)
     }
 }
@@ -134,9 +134,9 @@ where
     type Input = Par::Input;
     type Output = <Out as FilterableWithErr<Err>>::Output;
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+    fn next(&self, input: &mut Self::Input) -> Self::Output {
         self.parser
-            .parse_stream(input)
+            .next(input)
             .filter_response_or_else(|v| *v != self.value, &self.mode.0)
     }
 }
