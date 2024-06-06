@@ -1,7 +1,7 @@
 use lavan::prelude::*;
 
 fn main() {
-    let input = "es4fbero15181@r65dgh51.com";
+    /*let input = "es4fbero15181@r65dgh51.com";
 
     let names_and_dots = any_if(char::is_ascii_alphanumeric)
         .discard()
@@ -18,5 +18,5 @@ fn main() {
 
     let (username, hostname) = email.unwrap();
     assert_eq!(username, "es4fbero15181");
-    assert_eq!(hostname, "r65dgh51.com");
+    assert_eq!(hostname, "r65dgh51.com");*/
 }

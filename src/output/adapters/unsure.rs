@@ -107,6 +107,14 @@ impl<Err> Attachable for Unsure<Err> {
     }
 }
 
+impl<Err> ErrIgnorable for Unsure<Err> {
+    type Output = bool;
+
+    fn ignore_err_response(self) -> Self::Output {
+        self.into_result().is_ok()
+    }
+}
+
 impl<Err> Fallible for Unsure<Err> {
     type Infallible = ();
     type Optional = Sure<bool>;

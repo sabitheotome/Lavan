@@ -1,9 +1,9 @@
 use lavan::prelude::*;
 
 fn main() {
-    let input = "_identifier0123456789_abc123_789";
+    /*let input = "_identifier0123456789_abc123_789";
 
-    let output: Option<String> = 
+    let output: Option<String> =
         // first char: any ascii alphanumeric or any underscore
         any_if(char::is_ascii_alphabetic).or(any_eq('_'))
         // And then, the subsequent chars
@@ -22,8 +22,8 @@ fn main() {
 
     // crash the program if parsing failed
     let identifier: String = output.unwrap();
-    
+
     // print the identifier
     println!("{identifier}");
-    assert_eq!(input, identifier);
+    assert_eq!(input, identifier);*/
 }

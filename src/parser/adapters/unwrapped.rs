@@ -9,6 +9,7 @@ use crate::input::prelude::*;
 /// This `struct` is created by the [`Parser::unwrapped`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy, ParserAdapter)]
 pub struct Unwrapped<Par> {
     parser: Par,
 }
@@ -16,24 +17,24 @@ pub struct Unwrapped<Par> {
 impl<Par> Unwrapped<Par> {
     pub(crate) fn new(parser: Par) -> Self
     where
-        Par: Parser,
-        Par::Output: Fallible + ValueFunctor,
-        <Par::Output as Response>::Error: std::fmt::Debug,
+        Par: Operator,
+        Par::Response: Fallible + ValueFunctor,
+        <Par::Response as Response>::Error: std::fmt::Debug,
     {
         Self { parser }
     }
 }
 
-impl<Par> Parser for Unwrapped<Par>
+impl<Par> Operator for Unwrapped<Par>
 where
-    Par: Parser,
-    Par::Output: Fallible + ValueFunctor,
-    <Par::Output as Response>::Error: std::fmt::Debug,
+    Par: Operator,
+    Par::Response: Fallible + ValueFunctor,
+    <Par::Response as Response>::Error: std::fmt::Debug,
 {
-    type Input = Par::Input;
-    type Output = <Par::Output as Fallible>::Infallible;
+    type Scanner = Par::Scanner;
+    type Response = <Par::Response as Fallible>::Infallible;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
-        <Par::Output as Fallible>::Infallible::from_value(self.parser.next(input).unwrap())
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
+        <Par::Response as Fallible>::Infallible::from_value(self.parser.parse_next(input).unwrap())
     }
 }

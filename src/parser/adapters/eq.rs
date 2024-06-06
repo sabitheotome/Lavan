@@ -11,6 +11,7 @@ pub struct OrElse<Res, Err>(Res, std::marker::PhantomData<Err>);
 /// This `struct` is created by the [`Parser::eq`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy, ParserAdapter)]
 pub struct Eq<Par, Val, Mod = (), const I: bool = false> {
     parser: Par,
     value: Val,
@@ -40,9 +41,9 @@ pub type NeOrElse<Par, Val, Res, Err> = Ne<Par, Val, OrElse<Res, Err>>;
 impl<Par, Val, const I: bool> Eq<Par, Val, (), I> {
     pub(crate) fn new(parser: Par, value: Val) -> Self
     where
-        Par: Parser,
-        Par::Output: ValueFunctor,
-        <Par::Output as Response>::Value: PartialEq<Val>,
+        Par: Operator,
+        Par::Response: ValueFunctor,
+        <Par::Response as Response>::Value: PartialEq<Val>,
     {
         Self {
             parser,
@@ -75,68 +76,68 @@ impl<Par, Val, Mod> Eq<Par, Val, Mod> {
     }
 }
 
-impl<Par, Out, Val> Parser for Eq<Par, Val>
+impl<Par, Out, Val> Operator for Eq<Par, Val>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Out: Filterable,
     Out::Value: PartialEq<Val>,
 {
-    type Input = Par::Input;
-    type Output = <Out as Filterable>::Output;
+    type Scanner = Par::Scanner;
+    type Response = <Out as Filterable>::Output;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         self.parser
-            .next(input)
+            .parse_next(input)
             .filter_response(|v| *v == self.value)
     }
 }
 
-impl<Par, Out, Val, Res, Err> Parser for EqOrElse<Par, Val, Res, Err>
+impl<Par, Out, Val, Res, Err> Operator for EqOrElse<Par, Val, Res, Err>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Out: FilterableWithErr<Err>,
     Out::Value: PartialEq<Val>,
     Res: Fn() -> Err,
 {
-    type Input = Par::Input;
-    type Output = <Out as FilterableWithErr<Err>>::Output;
+    type Scanner = Par::Scanner;
+    type Response = <Out as FilterableWithErr<Err>>::Output;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         self.parser
-            .next(input)
+            .parse_next(input)
             .filter_response_or_else(|v| *v == self.value, &self.mode.0)
     }
 }
 
-impl<Par, Out, Val> Parser for Ne<Par, Val>
+impl<Par, Out, Val> Operator for Ne<Par, Val>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Out: Filterable,
     Out::Value: PartialEq<Val>,
 {
-    type Input = Par::Input;
-    type Output = <Out as Filterable>::Output;
+    type Scanner = Par::Scanner;
+    type Response = <Out as Filterable>::Output;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         self.parser
-            .next(input)
+            .parse_next(input)
             .filter_response(|v| *v != self.value)
     }
 }
 
-impl<Par, Out, Val, Res, Err> Parser for NeOrElse<Par, Val, Res, Err>
+impl<Par, Out, Val, Res, Err> Operator for NeOrElse<Par, Val, Res, Err>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Out: FilterableWithErr<Err>,
     Out::Value: PartialEq<Val>,
     Res: Fn() -> Err,
 {
-    type Input = Par::Input;
-    type Output = <Out as FilterableWithErr<Err>>::Output;
+    type Scanner = Par::Scanner;
+    type Response = <Out as FilterableWithErr<Err>>::Output;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         self.parser
-            .next(input)
+            .parse_next(input)
             .filter_response_or_else(|v| *v != self.value, &self.mode.0)
     }
 }

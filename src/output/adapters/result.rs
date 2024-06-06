@@ -69,6 +69,14 @@ impl<Val, Err> Ignorable for Result<Val, Err> {
     }
 }
 
+impl<Val, Err> ErrIgnorable for Result<Val, Err> {
+    type Output = Option<Val>;
+
+    fn ignore_err_response(self) -> Self::Output {
+        self.ok()
+    }
+}
+
 impl<Val, Err> Fallible for Result<Val, Err> {
     type Infallible = Sure<Self::Value>;
     type Optional = Sure<Option<Val>>;

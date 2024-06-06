@@ -7,6 +7,7 @@ use crate::parser::prelude::*;
 /// This `struct` is created by the [`Parser::or`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy, ParserAdapter)]
 pub struct Or<Par0, Par1> {
     parser0: Par0,
     parser1: Par1,
@@ -15,8 +16,8 @@ pub struct Or<Par0, Par1> {
 impl<Par0, Par1> Or<Par0, Par1> {
     pub(crate) fn new(parser0: Par0, parser1: Par1) -> Or<Par0, Par1>
     where
-        Par0: Parser,
-        Par1: Parser<Input = Par0::Input>,
+        Par0: Operator,
+        Par1: Operator<Scanner = Par0::Scanner>,
         //Par0::Output: Switchable<<Par1::Output as Response>::WithVal<<Par0::Output as Response>::Value>>,
     {
         Or { parser0, parser1 }
@@ -31,14 +32,16 @@ impl<Par0, Par1> Or<Par0, Par1> {
     pub fn either(
         &self,
     ) -> Or<
-        impl Parser<Output = val![Par0<Either<val![Par0], val![Par1]>>], Input = Par0::Input> + '_,
-        impl Parser<Output = val![Par1<Either<val![Par0], val![Par1]>>], Input = Par1::Input> + '_,
+        impl Operator<Response = val![Par0<Either<val![Par0], val![Par1]>>], Scanner = Par0::Scanner>
+            + '_,
+        impl Operator<Response = val![Par1<Either<val![Par0], val![Par1]>>], Scanner = Par1::Scanner>
+            + '_,
     >
     where
-        Par0: Parser,
-        Par0::Output: ValueFunctor,
-        Par1: Parser,
-        Par1::Output: ValueFunctor,
+        Par0: Operator,
+        Par0::Response: ValueFunctor,
+        Par1: Operator,
+        Par1::Response: ValueFunctor,
         val![Par0<Either<val![Par0], val![Par1]>>]:
             Switch<val![Par1<Either<val![Par0], val![Par1]>>]>,
     {
@@ -54,20 +57,20 @@ impl<Par0, Par1> Or<Par0, Par1> {
     }
 }
 
-impl<Par0, Par1> Parser for Or<Par0, Par1>
+impl<Par0, Par1> Operator for Or<Par0, Par1>
 where
-    Par0: Parser,
-    Par1: Parser<Input = Par0::Input>,
-    Par0::Output: Switch<Par1::Output>,
+    Par0: Operator,
+    Par1: Operator<Scanner = Par0::Scanner>,
+    Par0::Response: Switch<Par1::Response>,
 {
-    type Input = Par0::Input;
-    type Output = <Par0::Output as Switch<Par1::Output>>::Output;
+    type Scanner = Par0::Scanner;
+    type Response = <Par0::Response as Switch<Par1::Response>>::Output;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         let mut save_state = input.savestate();
-        self.parser0.next(input).switch(|| {
+        self.parser0.parse_next(input).switch(|| {
             input.backtrack(save_state);
-            self.parser1.next(input)
+            self.parser1.parse_next(input)
         })
     }
 }

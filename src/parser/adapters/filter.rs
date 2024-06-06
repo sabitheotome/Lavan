@@ -1,7 +1,7 @@
-use crate::parser::prelude::*;
+use crate::input::prelude::*;
 use crate::output::prelude::*;
 use crate::output::util::try_op;
-use crate::input::prelude::*;
+use crate::parser::prelude::*;
 
 // TODO: Documentation
 pub struct OrElse<Res, Err>(Res, std::marker::PhantomData<Err>);
@@ -11,6 +11,7 @@ pub struct OrElse<Res, Err>(Res, std::marker::PhantomData<Err>);
 /// This `struct` is created by the [`Parser::filter`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy, ParserAdapter)]
 pub struct Filter<Par, Fun, Mod = (), const I: bool = false> {
     parser: Par,
     predicate: Fun,
@@ -32,9 +33,9 @@ pub type FilterNotOrElse<Par, Fun, Res, Err> = FilterNot<Par, Fun, OrElse<Res, E
 impl<Par, Fun, const I: bool> Filter<Par, Fun, (), I> {
     pub(crate) fn new(parser: Par, function: Fun) -> Self
     where
-        Par: Parser,
-        Par::Output: ValueFunctor,
-        Fun: Fn(&<Par::Output as Response>::Value) -> bool,
+        Par: Operator,
+        Par::Response: ValueFunctor,
+        Fun: Fn(&<Par::Response as Response>::Value) -> bool,
     {
         Self {
             parser,
@@ -65,68 +66,68 @@ impl<Par, Fun, Mod> Filter<Par, Fun, Mod> {
     }
 }
 
-impl<Par, Out, Fun> Parser for Filter<Par, Fun>
+impl<Par, Out, Fun> Operator for Filter<Par, Fun>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Out: Filterable,
     Fun: Fn(&Out::Value) -> bool,
 {
-    type Input = Par::Input;
-    type Output = <Out as Filterable>::Output;
+    type Scanner = Par::Scanner;
+    type Response = <Out as Filterable>::Output;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         self.parser
-            .next(input)
+            .parse_next(input)
             .filter_response(&self.predicate)
     }
 }
 
-impl<Par, Out, Fun, Res, Err> Parser for FilterOrElse<Par, Fun, Res, Err>
+impl<Par, Out, Fun, Res, Err> Operator for FilterOrElse<Par, Fun, Res, Err>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Out: FilterableWithErr<Err>,
     Fun: Fn(&Out::Value) -> bool,
     Res: Fn() -> Err,
 {
-    type Input = Par::Input;
-    type Output = <Out as FilterableWithErr<Err>>::Output;
+    type Scanner = Par::Scanner;
+    type Response = <Out as FilterableWithErr<Err>>::Output;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         self.parser
-            .next(input)
+            .parse_next(input)
             .filter_response_or_else(&self.predicate, &self.mode.0)
     }
 }
 
-impl<Par, Out, Fun> Parser for FilterNot<Par, Fun>
+impl<Par, Out, Fun> Operator for FilterNot<Par, Fun>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Out: Filterable,
     Fun: Fn(&Out::Value) -> bool,
 {
-    type Input = Par::Input;
-    type Output = <Out as Filterable>::Output;
+    type Scanner = Par::Scanner;
+    type Response = <Out as Filterable>::Output;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         self.parser
-            .next(input)
+            .parse_next(input)
             .filter_response(|v| !(self.predicate)(v))
     }
 }
 
-impl<Par, Out, Fun, Res, Err> Parser for FilterNotOrElse<Par, Fun, Res, Err>
+impl<Par, Out, Fun, Res, Err> Operator for FilterNotOrElse<Par, Fun, Res, Err>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Out: FilterableWithErr<Err>,
     Fun: Fn(&Out::Value) -> bool,
     Res: Fn() -> Err,
 {
-    type Input = Par::Input;
-    type Output = <Out as FilterableWithErr<Err>>::Output;
+    type Scanner = Par::Scanner;
+    type Response = <Out as FilterableWithErr<Err>>::Output;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         self.parser
-            .next(input)
+            .parse_next(input)
             .filter_response_or_else(|v| !(self.predicate)(v), &self.mode.0)
     }
 }

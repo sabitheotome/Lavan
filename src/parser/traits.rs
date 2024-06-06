@@ -1,3 +1,5 @@
+use std::process::Output;
+
 use super::sources::adapters::{Any, Func};
 use super::util::assoc::{err, val};
 use super::{
@@ -11,6 +13,7 @@ use super::{
         ignore::Discard,
         map::Map,
         map_err::MapErr,
+        ok::Ok,
         opt::Opt,
         or::Or,
         owned::Owned,
@@ -26,27 +29,15 @@ use super::{
 };
 use crate::input::prelude::*;
 use crate::output::prelude::*;
-use crate::prelude::identifier;
 
-pub trait Parser {
-    /// The input [`Scanner`] iterated by the parser
-    type Input: Scanner;
-    /// The output [`Response`] returned by the parser
+pub trait Parser<Input>
+where
+    Input: Scanner,
+{
+    type Operator: Operator<Scanner = Input, Response = Self::Output>;
     type Output: Response;
 
-    /// Partially parses the referenced `input`, advancing the stream
-    ///
-    /// # Examples
-    /// Basic usage:
-    /// ```
-    /// use lavan::prelude::*;
-    /// use lavan::stream::traits::IntoStream;
-    ///
-    /// let mut stream = "Hello, World!".into_stream();
-    /// let first_char = any().next(&mut stream);
-    /// assert_eq!(first_char, Some('H'));
-    /// ```
-    fn next(&self, input: &mut Self::Input) -> Self::Output;
+    fn operator(self) -> Self::Operator;
 
     /// Parses the token sequence `input`
     ///
@@ -59,8 +50,11 @@ pub trait Parser {
     /// let first_char = any().evaluate(input);
     /// assert_eq!(first_char, Some('H'));
     /// ```
-    fn evaluate(&self, input: impl IntoScanner<IntoScanner = Self::Input>) -> Self::Output {
-        self.next(&mut input.into_scanner())
+    fn evaluate(self, input: impl IntoScanner<IntoScanner = Input>) -> Self::Output
+    where
+        Self: Sized,
+    {
+        self.operator().parse_next(&mut input.into_scanner())
     }
 
     /// Take this parser by reference, without consuming it.
@@ -88,6 +82,8 @@ pub trait Parser {
     fn as_ref(&self) -> AsRef<'_, Self>
     where
         Self: Sized,
+        Self: Operator,
+        Self: Parser<Input, Operator = Self>,
     {
         AsRef::new(self)
     }
@@ -104,12 +100,12 @@ pub trait Parser {
     ///     any().map(char::is_uppercase).evaluate(input);
     /// assert_eq!(is_uppercase, Some(true));
     /// ```
-    fn map<Fun>(self, f: Fun) -> Map<Self, Fun>
+    fn map<Fun>(self, f: Fun) -> Map<Self::Operator, Fun>
     where
         Self: Sized,
         Self::Output: Mappable<Fun>,
     {
-        Map::new(self, f)
+        Map::new(self.operator(), f)
     }
 
     /// Maps the [Error](Response::Error) contained in the
@@ -128,12 +124,12 @@ pub trait Parser {
     ///     .map_err(|| ExpectedSomethingError).evaluate(input);
     /// assert_eq!(result, Err(ExpectedSomethingError));
     /// ```
-    fn map_err<Fun>(self, f: Fun) -> MapErr<Self, Fun>
+    fn map_err<Fun>(self, f: Fun) -> MapErr<Self::Operator, Fun>
     where
         Self: Sized,
         Self::Output: ErrMappable<Fun>,
     {
-        MapErr::new(self, f)
+        MapErr::new(self.operator(), f)
     }
 
     /// Map the value contained in the [Output](Parser::Output) to a [Response].
@@ -150,12 +146,12 @@ pub trait Parser {
     ///     .evaluate(input);
     /// assert_eq!(maybe_uppercase, Some('A'));
     /// ```
-    fn then<Fun>(self, f: Fun) -> Then<Self, Fun>
+    fn then<Fun>(self, f: Fun) -> Then<Self::Operator, Fun>
     where
         Self: Sized,
         Self::Output: Apply<Fun>,
     {
-        Then::new(self, f)
+        Then::new(self.operator(), f)
     }
 
     // TODO: rename to "discard"
@@ -177,12 +173,21 @@ pub trait Parser {
     ///     .discard().repeat_eoi().evaluate(input);
     /// assert_eq!(is_all_alphabetic, true);
     /// ```
-    fn discard(self) -> Discard<Self>
+    fn discard(self) -> Discard<Self::Operator>
     where
         Self: Sized,
         Self::Output: Ignorable,
     {
-        Discard::new(self)
+        Discard::new(self.operator())
+    }
+
+    // TODO: Documentation
+    fn ok(self) -> Ok<Self::Operator>
+    where
+        Self: Sized,
+        Self::Output: ErrIgnorable,
+    {
+        Ok::new(self.operator())
     }
 
     /// Automatically backtracks if the parsing has failed
@@ -207,12 +212,12 @@ pub trait Parser {
     /// // WITH AUTO_BT: Stream index is equal to 0
     /// assert_eq!(stream_auto.1, 0);
     /// ```
-    fn auto_bt(self) -> AutoBt<Self>
+    fn auto_bt(self) -> AutoBt<Self::Operator>
     where
         Self: Sized,
         Self::Output: Fallible,
     {
-        AutoBt::new(self)
+        AutoBt::new(self.operator())
     }
 
     /// Make a fallible [Output](Parser::Output) response into a infallible response.
@@ -232,12 +237,12 @@ pub trait Parser {
     ///     .to_vec().evaluate(input).value();
     /// assert_eq!(bees.len(), 6);
     /// ```
-    fn opt(self) -> Opt<Self>
+    fn opt(self) -> Opt<Self::Operator>
     where
         Self: Sized,
         Self::Output: Fallible,
     {
-        Opt::new(self)
+        Opt::new(self.operator())
     }
 
     /// Yield a slice of the [Input](Parser::Input), defined by the startijng
@@ -253,13 +258,13 @@ pub trait Parser {
     ///     any().discard().repeat().slice().evaluate(input);
     /// assert_eq!(slice.value(), "Hello, World!");
     /// ```
-    fn slice<'a>(self) -> Slice<'a, Self>
+    fn slice<'a>(self) -> Slice<'a, Self::Operator>
     where
         Self: Sized,
-        Self::Input: ScannerSlice,
+        Input: ScannerSlice,
         Self::Output: Attachable,
     {
-        Slice::new(self)
+        Slice::new(self.operator())
     }
 
     /// Filters the response's [Value](Response::Value) through a predicate.
@@ -278,13 +283,13 @@ pub trait Parser {
     ///     take(5).filter(|s| *s == "Lavan").discard().evaluate(input);
     /// assert_eq!(is_lavan, true);
     /// ```
-    fn filter<Fun>(self, f: Fun) -> Filter<Self, Fun>
+    fn filter<Fun>(self, f: Fun) -> Filter<Self::Operator, Fun>
     where
         Self: Sized,
         Self::Output: ValueFunctor,
         Fun: Fn(&<Self::Output as Response>::Value) -> bool,
     {
-        Filter::new(self, f)
+        Filter::new(self.operator(), f)
     }
 
     /// Filters the response's [Value](Response::Value) through a inverted predicate.
@@ -304,7 +309,7 @@ pub trait Parser {
     ///     take(5).filter(|s| *s == "Lavan").discard().evaluate(input);
     /// assert_eq!(is_lavan, true);
     /// ```
-    fn filter_not<Fun>(self, f: Fun) -> FilterNot<Self, Fun>
+    fn filter_not<Fun>(self, f: Fun) -> FilterNot<Self::Operator, Fun>
     where
         Self: Sized,
         Self::Output: ValueFunctor,
@@ -328,13 +333,13 @@ pub trait Parser {
     /// let is_lavan: bool = take(5).eq("Lavan").discard().evaluate(input);
     /// assert_eq!(is_lavan, true);
     /// ```
-    fn eq<Val>(self, v: Val) -> Eq<Self, Val>
+    fn eq<Val>(self, v: Val) -> Eq<Self::Operator, Val>
     where
         Self: Sized,
         Self::Output: ValueFunctor,
         <Self::Output as Response>::Value: PartialEq<Val>,
     {
-        Eq::new(self, v)
+        Eq::new(self.operator(), v)
     }
 
     /// Make an inequallity condition for the response [Value](Response::Value).
@@ -353,13 +358,22 @@ pub trait Parser {
     /// let is_legal: bool = take(7).ne("Illegal").discard().evaluate(input);
     /// assert_eq!(is_legal, true);
     /// ```
-    fn ne<Val>(self, v: Val) -> Ne<Self, Val>
+    fn ne<Val>(self, v: Val) -> Ne<Self::Operator, Val>
     where
         Self: Sized,
         Self::Output: ValueFunctor,
         <Self::Output as Response>::Value: PartialEq<Val>,
     {
         self.eq(v).not()
+    }
+
+    // TODO: Documentation
+    fn boxed<T>(self) -> super::adapters::map::FnMap<Self::Operator, T, Box<T>>
+    where
+        Self: Sized,
+        Self::Output: Mappable<fn(T) -> Box<T>>,
+    {
+        self.map(Box::new)
     }
 
     /// Convert the value contained in the [Output](Parser::Output) into `T`
@@ -375,43 +389,43 @@ pub trait Parser {
     //     .parse_str::<u32>().evaluate(input);
     // assert_eq!(digit_to_u32, Some(7));
     // ```
-    fn parse_str<T>(self) -> ParseStr<Self, T>
+    fn parse_str<T>(self) -> ParseStr<Self::Operator, T>
     where
         Self: Sized,
         Self::Output: Apply<fn(&str) -> Result<T, T::Err>>,
         T: std::str::FromStr,
     {
-        ParseStr::new(self)
+        ParseStr::new(self.operator())
     }
 
     // TODO: Documentation
-    fn unwrapped(self) -> Unwrapped<Self>
+    fn unwrapped(self) -> Unwrapped<Self::Operator>
     where
         Self: Sized,
         Self::Output: Fallible + ValueFunctor,
         <Self::Output as Response>::Error: std::fmt::Debug,
     {
-        Unwrapped::new(self)
+        Unwrapped::new(self.operator())
     }
 
     // TODO: Documentation
-    fn owned(self) -> Owned<Self>
+    fn owned(self) -> Owned<Self::Operator>
     where
         Self: Sized,
         Self::Output: ValueFunctor,
         <Self::Output as Response>::Value: std::borrow::ToOwned,
     {
-        Owned::new(self)
+        Owned::new(self.operator())
     }
 
     // TODO: Documentation
-    fn spanned(self) -> Spanned<Self>
+    fn spanned(self) -> Spanned<Self::Operator>
     where
         Self: Sized,
-        Self::Input: ScannerSpan,
+        Input: ScannerSpan,
         Self::Output: ValueFunctor,
     {
-        Spanned::new(self)
+        Spanned::new(self.operator())
     }
 
     // TODO: Documentation
@@ -419,16 +433,16 @@ pub trait Parser {
         self,
         open: Del0,
         close: Del1,
-    ) -> Delimited<Self, Del0, Del1>
+    ) -> Delimited<Self::Operator, Del0, Del1>
     where
         Self: Sized,
-        Del0: Parser<Input = Self::Input>,
-        Del1: Parser<Input = Self::Input>,
+        Del0: Parser<Input>,
+        Del1: Parser<Input>,
         Del0::Output: Combine<Self::Output, Output = First>,
         First: Combine<Del1::Output, Output = Second>,
         Second: Response,
     {
-        Delimited::new(self, open, close)
+        Delimited::new(self.operator(), open, close)
     }
 
     /// Combine two parsers, running them subsequently.
@@ -445,13 +459,13 @@ pub trait Parser {
     ///     any().and(any()).and(any()).evaluate(input);
     /// assert_eq!(abc, Some((('A', 'B'), 'C')));
     /// ```
-    fn and<Par>(self, parser: Par) -> And<Self, Par>
+    fn and<Par>(self, parser: Par) -> And<Self::Operator, Par::Operator>
     where
         Self: Sized,
         Self::Output: Combine<Par::Output>,
-        Par: Parser<Input = Self::Input>,
+        Par: Parser<Input>,
     {
-        And::new(self, parser)
+        And::new(self.operator(), parser.operator())
     }
 
     /// Define a fallback parser in case this fails. Essentially, it
@@ -489,13 +503,13 @@ pub trait Parser {
     ///     .either().evaluate(input).unwrap();
     /// assert_eq!(tailsOrHeads, Right(Heads));
     /// ```
-    fn or<Par>(self, parser: Par) -> Or<Self, Par>
+    fn or<Par>(self, parser: Par) -> Or<Self::Operator, Par::Operator>
     where
         Self: Sized,
         //Self::Output: Switchable<<Par::Output as Response>::WithVal<<Self::Output as Response>::Value>>,
-        Par: Parser<Input = Self::Input>,
+        Par: Parser<Input>,
     {
-        Or::new(self, parser)
+        Or::new(self.operator(), parser.operator())
     }
 
     /// Try making a variant with another parser. Essentially, it tries
@@ -541,103 +555,109 @@ pub trait Parser {
     ///     .evaluate(input);
     /// assert_eq!(output.value(), expected_out);
     ///```
-    fn try_with<Par, Fun, Out0, Out1>(self, parser: Par, function: Fun) -> TryWith<Self, Par, Fun>
+    fn try_with<Par, Fun, Out1>(
+        self,
+        parser: Par,
+        function: Fun,
+    ) -> TryWith<Self::Operator, Par::Operator, Fun>
     where
-        Self: Sized + Parser<Output = Out0>,
-        Par: Parser<Output = Out1, Input = Self::Input>,
-        Fun: Fn(Out0::Value, Out1::Value) -> std::ops::ControlFlow<Out0::Value, Out0::Value>,
-        Out0: Response,
-        Out1: Response<Error = Out0::Error>,
+        Self: Sized,
+        Par: Parser<Input, Output = Out1>,
+        Fun: Fn(val![Self], Out1::Value) -> std::ops::ControlFlow<val![Self], val![Self]>,
+        Out1: Response<Error = err![Self]>,
     {
-        TryWith::new(self, parser, function)
+        TryWith::new(self.operator(), parser.operator(), function)
     }
 
     // TODO: Documentation
-    fn repeat(self) -> Repeat<Self>
+    fn repeat(self) -> Repeat<Self::Operator>
     where
         Self: Sized,
         Self::Output: Fallible,
     {
-        Repeat::new(self, UntilErr(()))
+        Repeat::new(self.operator(), UntilErr(()))
     }
 
     // TODO: Documentation
-    fn repeat_eoi(self) -> RepeatEOI<Self>
+    fn repeat_eoi(self) -> RepeatEOI<Self::Operator>
     where
         Self: Sized,
     {
-        RepeatEOI::new(self, UntilEOI(()))
+        RepeatEOI::new(self.operator(), UntilEOI(()))
     }
 
     // TODO: Documentation
     // TODO: usize -> NonZeroUsize
-    fn repeat_min(self, count: usize) -> RepeatMin<Self>
+    fn repeat_min(self, count: usize) -> RepeatMin<Self::Operator>
     where
         Self: Sized,
     {
         assert!(count >= 1);
-        RepeatMin::new(self, Minimum(count))
+        RepeatMin::new(self.operator(), Minimum(count))
     }
 
     // TODO: Documentation
-    fn repeat_min_eoi(self, count: usize) -> RepeatMinEOI<Self>
+    fn repeat_min_eoi(self, count: usize) -> RepeatMinEOI<Self::Operator>
     where
         Self: Sized,
     {
         assert!(count >= 1);
-        RepeatMinEOI::new(self, MinimumEOI(count))
+        RepeatMinEOI::new(self.operator(), MinimumEOI(count))
     }
 
     // TODO: Documentation
-    fn repeat_max(self, count: usize) -> RepeatMax<Self>
+    fn repeat_max(self, count: usize) -> RepeatMax<Self::Operator>
     where
         Self: Sized,
         Self::Output: Fallible,
     {
         assert!(count >= 1);
-        RepeatMax::new(self, Maximum(count))
+        RepeatMax::new(self.operator(), Maximum(count))
     }
 
     // TODO: Documentation
-    fn repeat_exact(self, count: usize) -> RepeatExact<Self>
+    fn repeat_exact(self, count: usize) -> RepeatExact<Self::Operator>
     where
         Self: Sized,
     {
         assert!(count >= 1);
-        RepeatExact::new(self, Exact(count))
+        RepeatExact::new(self.operator(), Exact(count))
     }
 }
 
-impl<Par: Parser> Parser for fn() -> Par {
-    type Input = Par::Input;
-    type Output = Par::Output;
-
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
-        self().next(input)
-    }
-}
-
-pub trait IntoParser<Input, Output>
-where
-    Input: Scanner,
-    Output: Response,
-{
-    type IntoParser: Parser<Input = Input, Output = Output>;
-
-    fn into_parser(self) -> Self::IntoParser;
-}
-
-impl<F, Input, Output> IntoParser<Input, Output> for F
+impl<F, Input, Output> Parser<Input> for F
 where
     F: Fn(&mut Input) -> Output,
     Input: Scanner,
     Output: Response,
 {
-    type IntoParser = Func<Self, Input, Output>;
+    type Output = Output;
+    type Operator = Func<Self, Input, Output>;
 
-    fn into_parser(self) -> Self::IntoParser {
+    fn operator(self) -> Self::Operator {
         func(self)
     }
+}
+
+pub trait Operator: Parser<Self::Scanner, Output = Self::Response, Operator = Self> {
+    /// The input [`Scanner`] iterated by the parser
+    type Scanner: Scanner;
+    /// The output [`Response`] returned by the parser
+    type Response: Response;
+
+    /// Partially parses the referenced `input`, advancing the stream
+    ///
+    /// # Examples
+    /// Basic usage:
+    /// ```
+    /// use lavan::prelude::*;
+    /// use lavan::stream::traits::IntoStream;
+    ///
+    /// let mut stream = "Hello, World!".into_stream();
+    /// let first_char = any().next(&mut stream);
+    /// assert_eq!(first_char, Some('H'));
+    /// ```
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Output;
 }
 
 pub trait Parse<Input>
@@ -647,10 +667,6 @@ where
     type Output: ValueFunctor<Value = Self>;
 
     fn parse(input: &mut Input) -> Self::Output;
-
-    fn parser() -> impl Parser<Input = Input, Output = Self::Output> {
-        func(Self::parse)
-    }
 }
 
 impl<Input, T> Parse<Input> for Option<T>
@@ -662,7 +678,7 @@ where
     type Output = Sure<Self>;
 
     fn parse(input: &mut Input) -> Self::Output {
-        T::parser().opt().next(input)
+        T::parse.opt().parse_next(input)
     }
 }
 
@@ -683,6 +699,6 @@ where
         super::sources::make::<Input, L>()
             .or(super::sources::make::<Input, R>())
             .either()
-            .next(input)
+            .parse_next(input)
     }
 }

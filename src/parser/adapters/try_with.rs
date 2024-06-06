@@ -9,6 +9,7 @@ use crate::parser::util::assoc::err;
 /// This `struct` is created by the [`Parser::try_with`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy, ParserAdapter)]
 pub struct TryWith<Par0, Par1, Fun> {
     parser0: Par0,
     parser1: Par1,
@@ -18,8 +19,8 @@ pub struct TryWith<Par0, Par1, Fun> {
 impl<Par0, Par1, Fun> TryWith<Par0, Par1, Fun> {
     pub(crate) fn new<Out0, Out1>(parser0: Par0, parser1: Par1, function: Fun) -> Self
     where
-        Par0: Parser<Output = Out0>,
-        Par1: Parser<Output = Out1, Input = Par0::Input>,
+        Par0: Operator<Response = Out0>,
+        Par1: Operator<Response = Out1, Scanner = Par0::Scanner>,
         Fun: Fn(Out0::Value, Out1::Value) -> std::ops::ControlFlow<Out0::Value, Out0::Value>,
         Out0: Response,
         Out1: Response<Error = Out0::Error>,
@@ -32,22 +33,22 @@ impl<Par0, Par1, Fun> TryWith<Par0, Par1, Fun> {
     }
 }
 
-impl<Par0, Par1, Fun, Out0, Out1> Parser for TryWith<Par0, Par1, Fun>
+impl<Par0, Par1, Fun, Out0, Out1> Operator for TryWith<Par0, Par1, Fun>
 where
-    Par0: Parser<Output = Out0>,
-    Par1: Parser<Output = Out1, Input = Par0::Input>,
+    Par0: Operator<Response = Out0>,
+    Par1: Operator<Response = Out1, Scanner = Par0::Scanner>,
     Fun: Fn(Out0::Value, Out1::Value) -> std::ops::ControlFlow<Out0::Value, Out0::Value>,
     Out0: Response,
     Out1: Response<Error = Out0::Error>,
 {
-    type Input = Par0::Input;
-    type Output = Out0;
+    type Scanner = Par0::Scanner;
+    type Response = Out0;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         use std::ops::ControlFlow::{Break, Continue};
-        let value0 = try_op!(self.parser0.next(input));
+        let value0 = try_op!(self.parser0.parse_next(input));
         let mut save_state = input.savestate();
-        match self.parser1.next(input).control_flow() {
+        match self.parser1.parse_next(input).control_flow() {
             Continue(value1) => match (self.function)(value0, value1) {
                 Continue(new) => Out0::from_value(new),
                 Break(original) => {

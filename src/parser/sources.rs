@@ -1,8 +1,4 @@
-use super::traits::{Parse, Parser};
-use crate::{
-    input::prelude::*,
-    output::{prelude::Sure, traits::Response},
-};
+use super::{super::input::prelude::*, super::output::prelude::*, prelude::*};
 use std::marker::PhantomData;
 
 pub use functions::*;
@@ -80,7 +76,7 @@ mod functions {
     }
 }
 
-pub(crate) mod adapters {
+pub mod adapters {
     use super::*;
 
     /// A parser for expecting the next token to be an **End of File**
@@ -88,7 +84,7 @@ pub(crate) mod adapters {
     /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
     /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, ParserAdapter)]
     pub struct EOI<Str>(pub(super) PhantomData<Str>);
 
     /// A parser for expectingany  kind of any token besides **End of File**
@@ -96,6 +92,7 @@ pub(crate) mod adapters {
     /// This `struct` is created by the [`any`] method on [`sources`](crate::parser::sources).
     /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
+    #[derive(Debug, Clone, Copy, ParserAdapter)]
     pub struct Any<Str>(pub(super) PhantomData<Str>);
 
     /// A parser for expecting any token that matches a predicate
@@ -103,6 +100,7 @@ pub(crate) mod adapters {
     /// This `struct` is created by the [`any_if`] method on [`sources`](crate::parser::sources).
     /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
+    #[derive(Debug, Clone, Copy, ParserAdapter)]
     pub struct AnyIf<Str, Fun>(pub(super) PhantomData<Str>, pub(super) Fun);
 
     /// A parser for expecting a token to be equal to the provided value
@@ -110,6 +108,7 @@ pub(crate) mod adapters {
     /// This `struct` is created by the [`any_eq`] method on [`sources`](crate::parser::sources).
     /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
+    #[derive(Debug, Clone, Copy, ParserAdapter)]
     pub struct AnyEq<Str, Item, const I: bool = false>(
         pub(super) PhantomData<Str>,
         pub(super) Item,
@@ -127,125 +126,124 @@ pub(crate) mod adapters {
     /// This `struct` is created by the [`take`] method on [`sources`](crate::parser::sources).
     /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
+    #[derive(Debug, Clone, Copy, ParserAdapter)]
     pub struct Take<'a, Str>(pub(super) usize, pub(super) PhantomData<&'a Str>);
 
     /// TODO: Documentation
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
+    #[derive(Debug, Clone, Copy, ParserAdapter)]
     pub struct Make<Str, T>(pub(super) PhantomData<(Str, T)>);
 
     /// TODO: Documentation
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
+    #[derive(Debug, Clone, Copy, ParserAdapter)]
     pub struct Func<Fun, Str, Out>(pub(super) Fun, pub(super) PhantomData<(Str, Out)>);
 }
 
 mod impls {
     use super::{adapters::*, *};
 
-    impl<Str> Parser for EOI<Str>
+    impl<Str> Operator for EOI<Str>
     where
         Str: Scanner,
     {
-        type Input = Str;
-        type Output = bool;
+        type Scanner = Str;
+        type Response = bool;
 
-        fn next(&self, input: &mut Self::Input) -> Self::Output {
+        fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
             input.next().is_none()
         }
     }
 
-    impl<Str> Parser for Any<Str>
+    impl<Str> Operator for Any<Str>
     where
         Str: Scanner,
     {
-        type Input = Str;
-        type Output = Option<Str::Item>;
+        type Scanner = Str;
+        type Response = Option<Str::Item>;
 
-        fn next(&self, input: &mut Self::Input) -> Self::Output {
+        fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
             input.next()
         }
     }
 
-    impl<Str, Fun> Parser for AnyIf<Str, Fun>
+    impl<Str, Fun> Operator for AnyIf<Str, Fun>
     where
         Str: Scanner,
         for<'a> Fun: Fn(&'a Str::Item) -> bool,
     {
-        type Input = Str;
-        type Output = Option<Str::Item>;
+        type Scanner = Str;
+        type Response = Option<Str::Item>;
 
-        fn next(&self, input: &mut Self::Input) -> Self::Output {
+        fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
             let mut peekable = input.peekable();
             let peek = peekable.peek()?;
             ((self.1)(peek)).then_some(peekable.next()?)
         }
     }
 
-    impl<Str> Parser for AnyEq<Str, Str::Item>
+    impl<Str> Operator for AnyEq<Str, Str::Item>
     where
         Str: Scanner,
         Str::Item: PartialEq,
     {
-        type Input = Str;
-        type Output = Option<Str::Item>;
+        type Scanner = Str;
+        type Response = Option<Str::Item>;
 
-        fn next(&self, input: &mut Self::Input) -> Self::Output {
-            any_if(|v| *v == self.1).next(input)
+        fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
+            any_if(|v| *v == self.1).parse_next(input)
         }
     }
 
-    impl<Str> Parser for AnyNe<Str, Str::Item>
+    impl<Str> Operator for AnyNe<Str, Str::Item>
     where
         Str: Scanner,
         Str::Item: PartialEq,
     {
-        type Input = Str;
-        type Output = Option<Str::Item>;
+        type Scanner = Str;
+        type Response = Option<Str::Item>;
 
-        fn next(&self, input: &mut Self::Input) -> Self::Output {
-            any_if(|v| *v != self.1).next(input)
+        fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
+            any_if(|v| *v != self.1).parse_next(input)
         }
     }
 
-    impl<'a, Str, Ref> Parser for Take<'a, Str>
+    impl<'a, Str, Ref> Operator for Take<'a, Str>
     where
         Str: Scanner + ScannerSlice<Slice = &'a Ref>,
         Ref: 'a + ?Sized,
     {
-        type Input = Str;
-        type Output = Option<&'a Ref>;
+        type Scanner = Str;
+        type Response = Option<&'a Ref>;
 
-        fn next(&self, input: &mut Self::Input) -> Self::Output {
-            any()
-                .discard()
-                .repeat_min(self.0)
-                .slice()
-                .next(input)
+        fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
+            any().discard().repeat_min(self.0).slice().parse_next(input)
         }
     }
 
-    impl<Fun, Str, Out> Parser for Func<Fun, Str, Out>
+    impl<Fun, Str, Out> Operator for Func<Fun, Str, Out>
     where
         Str: Scanner,
         Out: Response,
         Fun: Fn(&mut Str) -> Out,
     {
-        type Input = Str;
-        type Output = Out;
+        type Scanner = Str;
+        type Response = Out;
 
-        fn next(&self, input: &mut Self::Input) -> Self::Output {
+        fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
             (self.0)(input)
         }
     }
 
-    impl<Str, T> Parser for Make<Str, T>
+    impl<Str, T> Operator for Make<Str, T>
     where
         T: Parse<Str>,
         Str: Scanner,
     {
-        type Input = Str;
-        type Output = T::Output;
+        type Scanner = Str;
+        type Response = T::Output;
 
-        fn next(&self, input: &mut Self::Input) -> Self::Output {
+        fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
             T::parse(input)
         }
     }

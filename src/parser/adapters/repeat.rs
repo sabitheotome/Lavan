@@ -1,7 +1,7 @@
-use crate::parser::prelude::*;
+use crate::input::prelude::*;
 use crate::output::prelude::*;
 use crate::output::util::try_op;
-use crate::input::prelude::*;
+use crate::parser::prelude::*;
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
 
@@ -10,7 +10,7 @@ use std::ops::ControlFlow;
 /// This `struct` is created by the [`Parser::repeat`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug, Clone, Copy, ParserAdapter)]
 pub struct Repeater<Par, Mod, Col = ()> {
     parser: Par,
     mode: Mod,
@@ -61,7 +61,7 @@ impl<Par, Mod> Repeater<Par, Mod> {
     #[inline]
     pub(crate) fn new(parser: Par, mode: Mod) -> Self
     where
-        Par: Parser,
+        Par: Operator,
     {
         Self {
             parser,
@@ -73,9 +73,9 @@ impl<Par, Mod> Repeater<Par, Mod> {
     #[inline]
     pub fn collect<T>(self) -> Repeater<Par, Mod, T>
     where
-        T: Default + Extend<<Par::Output as Response>::Value>,
-        Par: Parser,
-        Par::Output: ValueFunctor,
+        T: Default + Extend<<Par::Response as Response>::Value>,
+        Par: Operator,
+        Par::Response: ValueFunctor,
     {
         Repeater {
             parser: self.parser,
@@ -85,10 +85,10 @@ impl<Par, Mod> Repeater<Par, Mod> {
     }
 
     #[inline]
-    pub fn to_vec(self) -> Repeater<Par, Mod, Vec<<Par::Output as Response>::Value>>
+    pub fn to_vec(self) -> Repeater<Par, Mod, Vec<<Par::Response as Response>::Value>>
     where
-        Par: Parser,
-        Par::Output: ValueFunctor,
+        Par: Operator,
+        Par::Response: ValueFunctor,
     {
         Repeater {
             parser: self.parser,
@@ -100,138 +100,140 @@ impl<Par, Mod> Repeater<Par, Mod> {
 
 // Non-interspersed
 
-impl<Par, Col, Out> Parser for Repeat<Par, Col>
+impl<Par, Col, Out> Operator for Repeat<Par, Col>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Col: Default + Extend<Out::Value>,
     Out: Fallible,
     Out::WithVal<Col>: Fallible<Value = Col>,
 {
-    type Input = Par::Input;
-    type Output = <Out::WithVal<Col> as Fallible>::Infallible;
+    type Scanner = Par::Scanner;
+    type Response = <Out::WithVal<Col> as Fallible>::Infallible;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         let mut collector = Col::default();
         loop {
-            match self.parser().auto_bt().next(input).control_flow() {
+            match self.parser().auto_bt().parse_next(input).control_flow() {
                 ControlFlow::Continue(val) => collector.extend([val]),
-                ControlFlow::Break(_) => return <Self::Output as Response>::from_value(collector),
+                ControlFlow::Break(_) => {
+                    return <Self::Response as Response>::from_value(collector)
+                }
             }
         }
     }
 }
 
-impl<Par, Col, Out> Parser for RepeatEOI<Par, Col>
+impl<Par, Col, Out> Operator for RepeatEOI<Par, Col>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Col: Default + Extend<Out::Value>,
     Out: Response,
     Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
 {
-    type Input = Par::Input;
-    type Output = Out::WithVal<Col>;
+    type Scanner = Par::Scanner;
+    type Response = Out::WithVal<Col>;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         let mut collector = Col::default();
         loop {
             if let None = input.peekable().peek() {
-                return Self::Output::from_value(collector);
+                return Self::Response::from_value(collector);
             }
-            collector.extend([try_op!(self.parser().next(input))]);
+            collector.extend([try_op!(self.parser().parse_next(input))]);
         }
     }
 }
 
-impl<Par, Col, Out> Parser for RepeatMax<Par, Col>
+impl<Par, Col, Out> Operator for RepeatMax<Par, Col>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Col: Default + Extend<Out::Value>,
     Out: Fallible,
     Out::WithVal<Col>: Fallible<Value = Col, Error = Out::Error>,
 {
-    type Input = Par::Input;
-    type Output = <Out::WithVal<Col> as Fallible>::Infallible;
+    type Scanner = Par::Scanner;
+    type Response = <Out::WithVal<Col> as Fallible>::Infallible;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         let mut collector = Col::default();
         for _ in 0..self.mode.0 {
-            match self.parser().auto_bt().next(input).control_flow() {
+            match self.parser().auto_bt().parse_next(input).control_flow() {
                 ControlFlow::Continue(val) => collector.extend([val]),
                 ControlFlow::Break(_) => break,
             }
         }
-        <Self::Output as Response>::from_value(collector)
+        <Self::Response as Response>::from_value(collector)
     }
 }
 
-impl<Par, Col, Out> Parser for RepeatExact<Par, Col>
+impl<Par, Col, Out> Operator for RepeatExact<Par, Col>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Col: Default + Extend<Out::Value>,
     Out: Response,
     Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
 {
-    type Input = Par::Input;
-    type Output = Out::WithVal<Col>;
+    type Scanner = Par::Scanner;
+    type Response = Out::WithVal<Col>;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         let mut collector = Col::default();
         for _ in 0..self.mode.0 {
-            collector.extend([try_op!(self.parser().next(input))])
+            collector.extend([try_op!(self.parser().parse_next(input))])
         }
-        Self::Output::from_value(collector)
+        Self::Response::from_value(collector)
     }
 }
 
-impl<Par, Col, Out> Parser for RepeatMin<Par, Col>
+impl<Par, Col, Out> Operator for RepeatMin<Par, Col>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Col: Default + Extend<Out::Value>,
     Out: Fallible,
     Out::WithVal<Col>: Fallible<Value = Col, Error = Out::Error>,
 {
-    type Input = Par::Input;
-    type Output = Out::WithVal<Col>;
+    type Scanner = Par::Scanner;
+    type Response = Out::WithVal<Col>;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         let mut collector = Col::default();
         for _ in 0..self.mode.0 {
-            collector.extend([try_op!(self.parser().next(input))])
+            collector.extend([try_op!(self.parser().parse_next(input))])
         }
         loop {
-            match self.parser().auto_bt().next(input).control_flow() {
+            match self.parser().auto_bt().parse_next(input).control_flow() {
                 ControlFlow::Continue(val) => collector.extend([val]),
-                ControlFlow::Break(_) => return Self::Output::from_value(collector),
+                ControlFlow::Break(_) => return Self::Response::from_value(collector),
             }
         }
     }
 }
 
-impl<Par, Col, Out> Parser for RepeatMinEOI<Par, Col>
+impl<Par, Col, Out> Operator for RepeatMinEOI<Par, Col>
 where
-    Par: Parser<Output = Out>,
+    Par: Operator<Response = Out>,
     Col: Default + Extend<Out::Value>,
     Out: Fallible,
     Out::WithVal<Col>: Fallible<Value = Col, Error = Out::Error>,
 {
-    type Input = Par::Input;
-    type Output = Out::WithVal<Col>;
+    type Scanner = Par::Scanner;
+    type Response = Out::WithVal<Col>;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         let mut collector = Col::default();
         for _ in 0..self.mode.0 {
-            collector.extend([try_op!(self.parser().next(input))])
+            collector.extend([try_op!(self.parser().parse_next(input))])
         }
         loop {
-            match self.parser().next(input).control_flow() {
+            match self.parser().parse_next(input).control_flow() {
                 ControlFlow::Continue(value) => {
                     collector.extend([value]);
                 }
                 ControlFlow::Break(error) => {
                     if let None = input.next() {
-                        return Self::Output::from_value(collector);
+                        return Self::Response::from_value(collector);
                     } else {
-                        return Self::Output::from_error(error);
+                        return Self::Response::from_error(error);
                     }
                 }
             }
@@ -241,220 +243,222 @@ where
 
 // Interspersed
 
-impl<Par, Int, Col, Out> Parser for Repeater<Par, Inter<UntilErr, Int>, Col>
+impl<Par, Int, Col, Out> Operator for Repeater<Par, Inter<UntilErr, Int>, Col>
 where
-    Par: Parser<Output = Out>,
-    Int: Parser<Input = Par::Input>,
+    Par: Operator<Response = Out>,
+    Int: Operator<Scanner = Par::Scanner>,
     Col: Default + Extend<Out::Value>,
     Out: Fallible,
     Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
-    Int::Output: Fallible,
+    Int::Response: Fallible,
 {
-    type Input = Par::Input;
-    type Output = Out::WithVal<Col>;
+    type Scanner = Par::Scanner;
+    type Response = Out::WithVal<Col>;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         let mut collector = Col::default();
         let Inter(UntilErr(()), ref int) = self.mode;
         // first iteration
-        match self.parser().auto_bt().next(input).control_flow() {
+        match self.parser().auto_bt().parse_next(input).control_flow() {
             ControlFlow::Continue(val) => collector.extend([val]),
-            ControlFlow::Break(err) => return Self::Output::from_value(collector),
+            ControlFlow::Break(err) => return Self::Response::from_value(collector),
         }
         loop {
             // breaks if separator was found
-            if let ControlFlow::Break(err) =
-                int.as_ref().auto_bt().next(input).control_flow()
+            if let ControlFlow::Break(err) = int.as_ref().auto_bt().parse_next(input).control_flow()
             {
                 break;
             }
             // expects main parser
-            collector.extend([try_op!(self.parser().next(input))])
+            collector.extend([try_op!(self.parser().parse_next(input))])
         }
-        Self::Output::from_value(collector)
+        Self::Response::from_value(collector)
     }
 }
 
-impl<Par, Int, Col, Out> Parser for Repeater<Par, Inter<UntilEOI, Int>, Col>
+impl<Par, Int, Col, Out> Operator for Repeater<Par, Inter<UntilEOI, Int>, Col>
 where
-    Par: Parser<Output = Out>,
-    Int: Parser<Input = Par::Input>,
+    Par: Operator<Response = Out>,
+    Int: Operator<Scanner = Par::Scanner>,
     Col: Default + Extend<Out::Value>,
     Out: Response,
     Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
-    Int::Output: Fallible,
+    Int::Response: Fallible,
 {
-    type Input = Par::Input;
-    type Output = Out::WithVal<Col>;
+    type Scanner = Par::Scanner;
+    type Response = Out::WithVal<Col>;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         let mut collector = Col::default();
         let Inter(UntilEOI(()), ref int) = self.mode;
-        match self.parser().next(input).control_flow() {
+        match self.parser().parse_next(input).control_flow() {
             ControlFlow::Continue(value) => collector.extend([value]),
             ControlFlow::Break(error) => {
                 if let None = input.next() {
-                    return Self::Output::from_value(collector);
+                    return Self::Response::from_value(collector);
                 } else {
-                    return Self::Output::from_error(error);
+                    return Self::Response::from_error(error);
                 }
             }
         }
         loop {
-            if let ControlFlow::Break(err) =
-                int.as_ref().auto_bt().next(input).control_flow()
+            if let ControlFlow::Break(err) = int.as_ref().auto_bt().parse_next(input).control_flow()
             {
                 break;
             }
-            match self.parser().next(input).control_flow() {
+            match self.parser().parse_next(input).control_flow() {
                 ControlFlow::Continue(value) => collector.extend([value]),
                 ControlFlow::Break(error) => {
                     if let None = input.next() {
-                        return Self::Output::from_value(collector);
+                        return Self::Response::from_value(collector);
                     } else {
-                        return Self::Output::from_error(error);
+                        return Self::Response::from_error(error);
                     }
                 }
             }
         }
-        Self::Output::from_value(collector)
+        Self::Response::from_value(collector)
     }
 }
 
-impl<Par, Int, Col, Out> Parser for Repeater<Par, Inter<Maximum, Int>, Col>
+impl<Par, Int, Col, Out> Operator for Repeater<Par, Inter<Maximum, Int>, Col>
 where
-    Par: Parser<Output = Out>,
-    Int: Parser<Input = Par::Input>,
+    Par: Operator<Response = Out>,
+    Int: Operator<Scanner = Par::Scanner>,
     Col: Default + Extend<Out::Value>,
     Out: Fallible,
     Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
-    Int::Output: Fallible,
+    Int::Response: Fallible,
 {
-    type Input = Par::Input;
-    type Output = Out::WithVal<Col>;
+    type Scanner = Par::Scanner;
+    type Response = Out::WithVal<Col>;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         let mut collector = Col::default();
         let Inter(Maximum(count), ref int) = self.mode;
-        match self.parser().auto_bt().next(input).control_flow() {
+        match self.parser().auto_bt().parse_next(input).control_flow() {
             ControlFlow::Continue(val) => collector.extend([val]),
-            ControlFlow::Break(err) => return Self::Output::from_value(collector),
+            ControlFlow::Break(err) => return Self::Response::from_value(collector),
         }
         for _ in 0..count - 1 {
-            if let ControlFlow::Break(err) =
-                int.as_ref().auto_bt().next(input).control_flow()
+            if let ControlFlow::Break(err) = int.as_ref().auto_bt().parse_next(input).control_flow()
             {
                 break;
             }
-            collector.extend([try_op!(self.parser().next(input))])
+            collector.extend([try_op!(self.parser().parse_next(input))])
         }
-        Self::Output::from_value(collector)
+        Self::Response::from_value(collector)
     }
 }
 
-impl<Par, Int, Col, Out> Parser for Repeater<Par, Inter<Exact, Int>, Col>
+impl<Par, Int, Col, Out> Operator for Repeater<Par, Inter<Exact, Int>, Col>
 where
-    Par: Parser<Output = Out>,
-    Int: Parser<Input = Par::Input>,
+    Par: Operator<Response = Out>,
+    Int: Operator<Scanner = Par::Scanner>,
     Col: Default + Extend<Out::Value>,
     Out: Response,
     Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
-    Int::Output: Fallible<Error = Out::Error>,
+    Int::Response: Fallible<Error = Out::Error>,
 {
-    type Input = Par::Input;
-    type Output = Out::WithVal<Col>;
+    type Scanner = Par::Scanner;
+    type Response = Out::WithVal<Col>;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         let mut collector = Col::default();
         let Inter(Exact(count), ref int) = self.mode;
-        collector.extend([try_op!(self.parser().next(input))]);
+        collector.extend([try_op!(self.parser().parse_next(input))]);
         for _ in 0..count - 1 {
-            try_op!(int.as_ref().auto_bt().next(input));
-            collector.extend([try_op!(self.parser().next(input))])
+            try_op!(int.as_ref().auto_bt().parse_next(input));
+            collector.extend([try_op!(self.parser().parse_next(input))])
         }
-        Self::Output::from_value(collector)
+        Self::Response::from_value(collector)
     }
 }
 
-impl<Par, Int, Col, Out> Parser for Repeater<Par, Inter<Minimum, Int>, Col>
+impl<Par, Int, Col, Out> Operator for Repeater<Par, Inter<Minimum, Int>, Col>
 where
-    Par: Parser<Output = Out>,
-    Int: Parser<Input = Par::Input>,
+    Par: Operator<Response = Out>,
+    Int: Operator<Scanner = Par::Scanner>,
     Col: Default + Extend<Out::Value>,
     Out: Response,
     Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
-    Int::Output: Fallible<Error = Out::Error>,
+    Int::Response: Fallible<Error = Out::Error>,
 {
-    type Input = Par::Input;
-    type Output = Out::WithVal<Col>;
+    type Scanner = Par::Scanner;
+    type Response = Out::WithVal<Col>;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         let mut collector = Col::default();
         let Inter(Minimum(count), ref int) = self.mode;
-        collector.extend([try_op!(self.parser().next(input))]);
+        collector.extend([try_op!(self.parser().parse_next(input))]);
         for _ in 0..count - 1 {
-            try_op!(int.as_ref().auto_bt().next(input));
-            collector.extend([try_op!(self.parser().next(input))])
+            try_op!(int.as_ref().auto_bt().parse_next(input));
+            collector.extend([try_op!(self.parser().parse_next(input))])
         }
         loop {
-            if let ControlFlow::Break(err) =
-                int.as_ref().auto_bt().next(input).control_flow()
+            if let ControlFlow::Break(err) = int.as_ref().auto_bt().parse_next(input).control_flow()
             {
                 break;
             }
-            collector.extend([try_op!(self.parser().next(input))])
+            collector.extend([try_op!(self.parser().parse_next(input))])
         }
-        Self::Output::from_value(collector)
+        Self::Response::from_value(collector)
     }
 }
 
-impl<Par, Int, Col, Out> Parser for Repeater<Par, Inter<MinimumEOI, Int>, Col>
+impl<Par, Int, Col, Out> Operator for Repeater<Par, Inter<MinimumEOI, Int>, Col>
 where
-    Par: Parser<Output = Out>,
-    Int: Parser<Input = Par::Input>,
+    Par: Operator<Response = Out>,
+    Int: Operator<Scanner = Par::Scanner>,
     Col: Default + Extend<Out::Value>,
     Out: Response,
     Out::WithVal<Col>: Response<Value = Col, Error = Out::Error>,
-    Int::Output: Fallible<Error = Out::Error>,
+    Int::Response: Fallible<Error = Out::Error>,
 {
-    type Input = Par::Input;
-    type Output = Out::WithVal<Col>;
+    type Scanner = Par::Scanner;
+    type Response = Out::WithVal<Col>;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         let mut collector = Col::default();
         let Inter(MinimumEOI(count), ref int) = self.mode;
-        collector.extend([try_op!(self.parser().next(input))]);
+        collector.extend([try_op!(self.parser().parse_next(input))]);
         for _ in 0..count - 1 {
-            try_op!(int.as_ref().auto_bt().next(input));
-            collector.extend([try_op!(self.parser().next(input))])
+            try_op!(int.as_ref().auto_bt().parse_next(input));
+            collector.extend([try_op!(self.parser().parse_next(input))])
         }
         loop {
-            if let ControlFlow::Break(err) =
-                int.as_ref().auto_bt().next(input).control_flow()
+            if let ControlFlow::Break(err) = int.as_ref().auto_bt().parse_next(input).control_flow()
             {
                 break;
             }
-            match self.parser().next(input).control_flow() {
+            match self.parser().parse_next(input).control_flow() {
                 ControlFlow::Continue(value) => collector.extend([value]),
                 ControlFlow::Break(error) => {
                     if let None = input.next() {
-                        return Self::Output::from_value(collector);
+                        return Self::Response::from_value(collector);
                     } else {
-                        return Self::Output::from_error(error);
+                        return Self::Response::from_error(error);
                     }
                 }
             }
         }
-        Self::Output::from_value(collector)
+        Self::Response::from_value(collector)
     }
 }
 
 impl<Par, Mod, Col> Repeater<Par, Mod, Col> {
     #[inline]
-    pub fn separated_by<Int>(self, parser: Int) -> Repeater<Par, Inter<Mod, Int>, Col> {
+    pub fn separated_by<Input, Int>(
+        self,
+        parser: Int,
+    ) -> Repeater<Par, Inter<Mod, Int::Operator>, Col>
+    where
+        Input: Scanner,
+        Int: Parser<Input>,
+    {
         Repeater {
             parser: self.parser,
-            mode: Inter(self.mode, parser),
+            mode: Inter(self.mode, parser.operator()),
             collector: self.collector,
         }
     }
@@ -462,7 +466,7 @@ impl<Par, Mod, Col> Repeater<Par, Mod, Col> {
     #[inline]
     fn parser(&self) -> super::super::adapters::as_ref::AsRef<Par>
     where
-        Par: Parser,
+        Par: Operator,
     {
         self.parser.as_ref()
     }

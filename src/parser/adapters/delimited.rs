@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
+use crate::input::prelude::*;
+use crate::output::prelude::*;
 use crate::parser::prelude::*;
 use crate::parser::sources::any_eq;
-use crate::output::prelude::*;
-use crate::input::prelude::*;
 
 use super::ignore::Discard;
 
@@ -11,6 +11,8 @@ use super::ignore::Discard;
 ///
 /// This `struct` is created by the [`Parser::delimited`] method on [`Parser`].
 /// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy, ParserAdapter)]
 pub struct Delimited<Par, Del0, Del1> {
     parser: Par,
     open: Del0,
@@ -19,10 +21,10 @@ pub struct Delimited<Par, Del0, Del1> {
 
 impl<Par, Del0, Del1, First, Second> Delimited<Par, Del0, Del1>
 where
-    Par: Parser,
-    Del0: Parser<Input = Par::Input>,
-    Del1: Parser<Input = Par::Input>,
-    Del0::Output: Combine<Par::Output, Output = First>,
+    Par: Operator,
+    Del0: Parser<Par::Scanner>,
+    Del1: Parser<Par::Scanner>,
+    Del0::Output: Combine<Par::Response, Output = First>,
     First: Combine<Del1::Output, Output = Second>,
     Second: Response,
 {
@@ -34,7 +36,9 @@ where
         }
     }
 
-    pub(crate) fn discard_delimiters(self) -> Delimited<Par, Discard<Del0>, Discard<Del1>>
+    pub(crate) fn discard_delimiters(
+        self,
+    ) -> Delimited<Par, Discard<Del0::Operator>, Discard<Del1::Operator>>
     where
         Del0::Output: Ignorable,
         Del1::Output: Ignorable,
@@ -47,23 +51,23 @@ where
     }
 }
 
-impl<Par, Del0, Del1, First, Second> Parser for Delimited<Par, Del0, Del1>
+impl<Par, Del0, Del1, First, Second> Operator for Delimited<Par, Del0, Del1>
 where
-    Par: Parser,
-    Del0: Parser<Input = Par::Input>,
-    Del1: Parser<Input = Par::Input>,
-    Del0::Output: Combine<Par::Output, Output = First>,
-    First: Combine<Del1::Output, Output = Second>,
+    Par: Operator,
+    Del0: Operator<Scanner = Par::Scanner>,
+    Del1: Operator<Scanner = Par::Scanner>,
+    Del0::Response: Combine<Par::Response, Output = First>,
+    First: Combine<Del1::Response, Output = Second>,
     Second: Response,
 {
-    type Input = Par::Input;
-    type Output = Second;
+    type Scanner = Par::Scanner;
+    type Response = Second;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         self.open
             .as_ref()
             .and(self.parser.as_ref())
             .and(self.close.as_ref())
-            .next(input)
+            .parse_next(input)
     }
 }

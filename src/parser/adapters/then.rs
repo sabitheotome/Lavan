@@ -1,7 +1,7 @@
-use crate::parser::prelude::*;
+use crate::input::prelude::*;
 use crate::output::prelude::*;
 use crate::output::util::try_op;
-use crate::input::prelude::*;
+use crate::parser::prelude::*;
 use std::marker::PhantomData;
 
 /// A parser for flat-mapping responses
@@ -9,6 +9,7 @@ use std::marker::PhantomData;
 /// This `struct` is created by the [`Parser::then`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy, ParserAdapter)]
 pub struct Then<Par, Fun> {
     parser: Par,
     function: Fun,
@@ -17,22 +18,22 @@ pub struct Then<Par, Fun> {
 impl<Par, Fun> Then<Par, Fun> {
     pub(crate) fn new(parser: Par, function: Fun) -> Self
     where
-        Par: Parser,
-        Par::Output: Apply<Fun>,
+        Par: Operator,
+        Par::Response: Apply<Fun>,
     {
         Self { parser, function }
     }
 }
 
-impl<Par, Fun> Parser for Then<Par, Fun>
+impl<Par, Fun> Operator for Then<Par, Fun>
 where
-    Par: Parser,
-    Par::Output: Apply<Fun>,
+    Par: Operator,
+    Par::Response: Apply<Fun>,
 {
-    type Input = Par::Input;
-    type Output = <Par::Output as Apply<Fun>>::Output;
+    type Scanner = Par::Scanner;
+    type Response = <Par::Response as Apply<Fun>>::Output;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
-        self.parser.next(input).apply(&self.function)
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
+        self.parser.parse_next(input).apply(&self.function)
     }
 }

@@ -2,7 +2,7 @@
 #![cfg(feature = "experimental")]
 
 pub mod parser {
-    pub(crate) mod adapters {
+    pub mod adapters {
         pub mod and;
         pub mod as_ref;
         pub mod auto_bt;
@@ -12,6 +12,7 @@ pub mod parser {
         pub mod ignore;
         pub mod map;
         pub mod map_err;
+        pub mod ok;
         pub mod opt;
         pub mod or;
         pub mod owned;

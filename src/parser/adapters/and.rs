@@ -8,6 +8,7 @@ use crate::parser::util::assoc::err;
 /// This `struct` is created by the [`Parser::and`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy, ParserAdapter)]
 pub struct And<Par0, Par1> {
     parser0: Par0,
     parser1: Par1,
@@ -16,48 +17,47 @@ pub struct And<Par0, Par1> {
 impl<Par0, Par1> And<Par0, Par1> {
     pub(crate) fn new(parser0: Par0, parser1: Par1) -> And<Par0, Par1>
     where
-        Par0: Parser,
-        Par1: Parser<Input = Par0::Input>,
-        Par0::Output: Combine<Par1::Output>,
+        Par0: Operator,
+        Par1: Operator<Scanner = Par0::Scanner>,
+        Par0::Response: Combine<Par1::Response>,
     {
         And { parser0, parser1 }
     }
 
     #[cfg(feature = "either")]
-    pub fn either_err<'a>(&'a self) -> And<impl Parser + 'a, impl Parser + 'a>
+    pub fn either_err<Input>(self) -> And<impl Operator, impl Operator>
     where
-        Par0: Parser,
-        Par1: Parser,
-        Par0::Output: 'a + ErrorFunctor,
-        Par1::Output: 'a + ErrorFunctor,
+        Input: Scanner,
+        Par0: Parser<Input>,
+        Par1: Parser<Input>,
+        Par0::Output: ErrorFunctor,
+        Par1::Output: ErrorFunctor,
     {
         use either::Either;
 
         And {
             parser0: self
                 .parser0
-                .as_ref()
-                .map_err(Either::<err![Par0], err![Par1]>::Left),
+                .map_err(Either::<err![Par0::Output], err![Par1::Output]>::Left),
             parser1: self
                 .parser1
-                .as_ref()
-                .map_err(Either::<err![Par0], err![Par1]>::Right),
+                .map_err(Either::<err![Par0::Output], err![Par1::Output]>::Right),
         }
     }
 }
 
-impl<Par0, Par1> Parser for And<Par0, Par1>
+impl<Par0, Par1> Operator for And<Par0, Par1>
 where
-    Par0: Parser,
-    Par1: Parser<Input = Par0::Input>,
-    Par0::Output: Combine<Par1::Output>,
+    Par0: Operator,
+    Par1: Operator<Scanner = Par0::Scanner>,
+    Par0::Response: Combine<Par1::Response>,
 {
-    type Input = Par0::Input;
-    type Output = <Par0::Output as Combine<Par1::Output>>::Output;
+    type Scanner = Par0::Scanner;
+    type Response = <Par0::Response as Combine<Par1::Response>>::Output;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
         self.parser0
-            .next(input)
-            .combine(|| self.parser1.next(input))
+            .parse_next(input)
+            .combine(|| self.parser1.parse_next(input))
     }
 }

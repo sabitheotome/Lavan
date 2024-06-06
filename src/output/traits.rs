@@ -71,9 +71,19 @@ pub trait Attachable: Response {
     fn attach_to_response<V>(self, value: impl FnOnce() -> V) -> Self::Output<V>;
 }
 
+pub trait ErrAttachable: Response {
+    type Output<E>: ErrIgnorable;
+    fn attach_err_to_response<E>(self, value: impl FnOnce() -> E) -> Self::Output<E>;
+}
+
 pub trait Ignorable: Response {
     type Output: Attachable;
     fn ignore_response(self) -> Self::Output;
+}
+
+pub trait ErrIgnorable: Response {
+    type Output: ErrAttachable;
+    fn ignore_err_response(self) -> Self::Output;
 }
 
 pub trait Mappable<Fun>: Response {

@@ -10,6 +10,7 @@ pub type FnMap<Par, Val0, Val1> = Map<Par, fn(Val0) -> Val1>;
 /// This `struct` is created by the [`Parser::map`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy, ParserAdapter)]
 pub struct Map<Par, Fun> {
     parser: Par,
     function: Fun,
@@ -18,22 +19,22 @@ pub struct Map<Par, Fun> {
 impl<Par, Fun> Map<Par, Fun> {
     pub(crate) fn new(parser: Par, function: Fun) -> Self
     where
-        Par: Parser,
-        Par::Output: Mappable<Fun>,
+        Par: Operator,
+        Par::Response: Mappable<Fun>,
     {
         Map { parser, function }
     }
 }
 
-impl<Par, Fun> Parser for Map<Par, Fun>
+impl<Par, Fun> Operator for Map<Par, Fun>
 where
-    Par: Parser,
-    Par::Output: Mappable<Fun>,
+    Par: Operator,
+    Par::Response: Mappable<Fun>,
 {
-    type Input = Par::Input;
-    type Output = <Par::Output as Mappable<Fun>>::Output;
+    type Scanner = Par::Scanner;
+    type Response = <Par::Response as Mappable<Fun>>::Output;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
-        self.parser.next(input).map_response(&self.function)
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
+        self.parser.parse_next(input).map_response(&self.function)
     }
 }

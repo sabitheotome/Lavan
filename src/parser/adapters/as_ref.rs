@@ -7,6 +7,7 @@ use crate::parser::prelude::*;
 /// This `struct` is created by the [`Parser::and`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy, ParserAdapter)]
 pub struct AsRef<'a, Par> {
     parser: &'a Par,
 }
@@ -14,32 +15,20 @@ pub struct AsRef<'a, Par> {
 impl<'a, Par> AsRef<'a, Par> {
     pub(crate) fn new(parser: &'a Par) -> Self
     where
-        Par: Parser,
+        Par: Operator,
     {
         Self { parser }
     }
 }
 
-impl<'a, Par> Parser for AsRef<'a, Par>
+impl<'a, Par> Operator for AsRef<'a, Par>
 where
-    Par: Parser,
+    Par: Operator,
 {
-    type Input = Par::Input;
-    type Output = Par::Output;
+    type Scanner = Par::Scanner;
+    type Response = Par::Response;
 
-    fn next(&self, input: &mut Self::Input) -> Self::Output {
-        self.parser.next(input)
-    }
-}
-
-impl<'a, Par> IntoParser<<AsRef<'a, Par> as Parser>::Input, <AsRef<'a, Par> as Parser>::Output>
-    for AsRef<'a, Par>
-where
-    Par: Parser,
-{
-    type IntoParser = Self;
-
-    fn into_parser(self) -> Self::IntoParser {
-        self
+    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
+        self.parser.parse_next(input)
     }
 }

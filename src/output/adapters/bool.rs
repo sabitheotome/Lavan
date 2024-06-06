@@ -77,6 +77,17 @@ impl Attachable for bool {
     }
 }
 
+impl ErrAttachable for bool {
+    type Output<E> = Unsure<E>;
+
+    fn attach_err_to_response<E>(self, value: impl FnOnce() -> E) -> Self::Output<E> {
+        match self {
+            true => Unsure::ok(),
+            false => Unsure::err(value()),
+        }
+    }
+}
+
 impl<Fun, Err> ErrMappable<Fun> for bool
 where
     Fun: Fn() -> Err,
@@ -163,6 +174,20 @@ impl<Val> Combine<Option<Val>> for bool {
     {
         match self {
             true => f(),
+            false => None,
+        }
+    }
+}
+
+impl<Val, Err> Combine<Result<Val, Err>> for bool {
+    type Output = Option<Val>;
+
+    fn combine<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Result<Val, Err>,
+    {
+        match self {
+            true => f().ok(),
             false => None,
         }
     }

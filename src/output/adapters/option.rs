@@ -62,6 +62,14 @@ impl<Val> Ignorable for Option<Val> {
     }
 }
 
+impl<Val> ErrAttachable for Option<Val> {
+    type Output<Err> = Result<Val, Err>;
+
+    fn attach_err_to_response<E>(self, value: impl FnOnce() -> E) -> Self::Output<E> {
+        self.ok_or_else(value)
+    }
+}
+
 impl<Fun, Val, Err> ErrMappable<Fun> for Option<Val>
 where
     Fun: Fn() -> Err,

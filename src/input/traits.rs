@@ -1,7 +1,7 @@
 use super::adapters::cursor::Cursor;
 use crate::parser::{
     adapters::slice::Slice,
-    traits::{Parse, Parser},
+    traits::{Operator, Parse, Parser},
 };
 
 pub trait Scanner: Iterator {
@@ -63,7 +63,7 @@ pub trait IntoScanner {
     fn evaluate<Par>(self, parser: Par) -> Par::Output
     where
         Self: Sized,
-        Par: Parser<Input = Self::IntoScanner>,
+        Par: Parser<Self::IntoScanner>,
     {
         parser.evaluate(self)
     }

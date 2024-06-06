@@ -8,8 +8,11 @@ repository = "https://github.com/sabitheotome/lavan"
 edition = "2021"
 
 [dependencies]
+macros = { path = "./macros" }
 either = { version = "1.9.0", optional = true }
 derive_more = "0.99.17"
+
+[dev-dependencies]
 
 [features]
 default = ["either"]
@@ -18,3 +21,6 @@ experimental = []
 
 [profile.dev]
 opt-level = 2
+
+[workspace]
+members = ["macros"]
