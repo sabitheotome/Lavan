@@ -19,6 +19,7 @@ impl<T> Sure<T> {
 impl<T> Response for Sure<T> {
     type Value = T;
     type Error = Infallible;
+    type Residual = Infallible;
     type WithVal<Val> = Sure<Val>;
     type WithErr<Err> = Sure<T>;
 
@@ -28,6 +29,10 @@ impl<T> Response for Sure<T> {
 
     fn from_error(_error: Self::Error) -> Self {
         unreachable!()
+    }
+
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        ControlFlow::Continue(self.value())
     }
 
     fn map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
@@ -50,48 +55,42 @@ impl<T> Response for Sure<T> {
     {
         f(self.value())
     }
-
-    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
-        ControlFlow::Continue(self.value())
-    }
 }
 
-impl<T> ValueFunctor for Sure<T> {
+impl<T> ValueResponse for Sure<T> {
+    type VoidVal = ();
+
+    fn void_val(self) -> Self::VoidVal {
+        let _ = self.0;
+    }
+
     fn unwrap(self) -> Self::Value {
         self.value()
     }
 }
 
-impl<Val> Ignorable for Sure<Val> {
-    type Output = ();
-
-    fn ignore_response(self) -> Self::Output {
-        let _ = self;
-    }
-}
-
-impl<Val> Filterable for Sure<Val> {
+impl<Val> Predict for Sure<Val> {
     type Output = Option<Val>;
 
-    fn filter_response(self, predicate: impl FnOnce(&Self::Value) -> bool) -> Self::Output {
-        match predicate(self.get()) {
+    fn predict(self, pred: impl FnOnce(&Self::Value) -> bool) -> Self::Output {
+        match pred(self.get()) {
             true => Some(self.value()),
             false => None,
         }
     }
 }
 
-impl<Val, Err> FilterableWithErr<Err> for Sure<Val> {
+impl<Val, Err> PredictOrElse<Err> for Sure<Val> {
     type Output = Result<Val, Err>;
 
-    fn filter_response_or_else(
+    fn predict_or_else(
         self,
-        predicate: impl FnOnce(&Self::Value) -> bool,
-        error: impl FnOnce() -> Err,
+        pred: impl FnOnce(&Self::Value) -> bool,
+        err: impl FnOnce() -> Err,
     ) -> Self::Output {
-        match predicate(self.get()) {
+        match pred(self.get()) {
             true => Ok(self.value()),
-            false => Err(error()),
+            false => Err(err()),
         }
     }
 }
@@ -102,6 +101,7 @@ where
     Out: Response,
 {
     type Output = Out;
+
     fn apply(self, f: &Fun) -> Self::Output {
         f(self.value())
     }

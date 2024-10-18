@@ -3,6 +3,7 @@ use crate::output::prelude::*;
 impl Response for bool {
     type Value = ();
     type Error = ();
+    type Residual = Exception<()>;
     type WithVal<Val> = bool;
     type WithErr<Err> = bool;
 
@@ -12,6 +13,13 @@ impl Response for bool {
 
     fn from_error((): Self::Error) -> Self {
         false
+    }
+
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        match self {
+            true => ControlFlow::Continue(()),
+            false => ControlFlow::Break(()),
+        }
     }
 
     fn map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
@@ -46,22 +54,15 @@ impl Response for bool {
     {
         f(())
     }
-
-    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
-        match self {
-            true => ControlFlow::Continue(()),
-            false => ControlFlow::Break(()),
-        }
-    }
 }
 
-impl<Fun, Val> Mappable<Fun> for bool
+impl<Fun, Val> Select<Fun> for bool
 where
     Fun: Fn() -> Val,
 {
     type Output = Option<Val>;
 
-    fn map_response(self, f: &Fun) -> Self::Output {
+    fn sel(self, f: &Fun) -> Self::Output {
         match self {
             true => Some(f()),
             false => None,
@@ -69,7 +70,7 @@ where
     }
 }
 
-impl Attachable for bool {
+impl Attach for bool {
     type Output<V> = Option<V>;
 
     fn attach_to_response<V>(self, value: impl FnOnce() -> V) -> Self::Output<V> {
@@ -77,7 +78,7 @@ impl Attachable for bool {
     }
 }
 
-impl ErrAttachable for bool {
+impl AttachErr for bool {
     type Output<E> = Unsure<E>;
 
     fn attach_err_to_response<E>(self, value: impl FnOnce() -> E) -> Self::Output<E> {
@@ -88,13 +89,13 @@ impl ErrAttachable for bool {
     }
 }
 
-impl<Fun, Err> ErrMappable<Fun> for bool
+impl<Fun, Err> SelectErr<Fun> for bool
 where
     Fun: Fn() -> Err,
 {
     type Output = Unsure<Err>;
 
-    fn err_map_response(self, f: &Fun) -> Self::Output {
+    fn sel_err(self, f: &Fun) -> Self::Output {
         match self {
             true => Unsure::ok(),
             false => Unsure::err(f()),
@@ -118,6 +119,7 @@ where
     Out: Response,
 {
     type Output = <Self as Combine<Out>>::Output;
+
     fn apply(self, f: &Fun) -> Self::Output {
         self.combine(f)
     }

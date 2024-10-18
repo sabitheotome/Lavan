@@ -5,69 +5,45 @@ use crate::output::prelude::*;
 use crate::parser::prelude::*;
 use crate::parser::sources::any_eq;
 
-use super::ignore::Discard;
+use super::discard::Discard;
 
 /// A util parser for expecting opening and closing delimiters around
 ///
 /// This `struct` is created by the [`Parser::delimited`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
-#[derive(Debug, Clone, Copy, ParserAdapter)]
+#[derive(Debug, Clone, Copy)]
 pub struct Delimited<Par, Del0, Del1> {
-    parser: Par,
-    open: Del0,
-    close: Del1,
+    pub(in crate::parser) parser: Par,
+    pub(in crate::parser) open: Del0,
+    pub(in crate::parser) close: Del1,
 }
 
-impl<Par, Del0, Del1, First, Second> Delimited<Par, Del0, Del1>
+#[parser_fn]
+fn delimited<par, del0, del1, Combo>(self: &Delimited<par, del0, del1>) -> Combo::Output
 where
-    Par: Operator,
-    Del0: Parser<Par::Scanner>,
-    Del1: Parser<Par::Scanner>,
-    Del0::Output: Combine<Par::Response, Output = First>,
-    First: Combine<Del1::Output, Output = Second>,
-    Second: Response,
+    del0::Output: Combine<par::Output, Output = Combo>,
+    Combo: Combine<del1::Output, Output: Response>,
 {
-    pub(crate) fn new(parser: Par, open: Del0, close: Del1) -> Self {
-        Self {
-            parser,
-            open,
-            close,
-        }
-    }
+    let open = parser![self.open];
+    let middle = parser![self.parser];
+    let close = parser![self.close];
 
-    pub(crate) fn discard_delimiters(
+    parse![open.and(middle).and(close)]
+}
+
+impl<Par, Del0, Del1> Delimited<Par, Del0, Del1> {
+    pub(crate) fn discard_delimiters<Input: Scanner>(
         self,
-    ) -> Delimited<Par, Discard<Del0::Operator>, Discard<Del1::Operator>>
+    ) -> Delimited<Par, Discard<Del0>, Discard<Del1>>
     where
-        Del0::Output: Ignorable,
-        Del1::Output: Ignorable,
+        Del0: Parser<Input, Output: ValueResponse>,
+        Del1: Parser<Input, Output: ValueResponse>,
     {
         Delimited {
             parser: self.parser,
             open: self.open.discard(),
             close: self.close.discard(),
         }
-    }
-}
-
-impl<Par, Del0, Del1, First, Second> Operator for Delimited<Par, Del0, Del1>
-where
-    Par: Operator,
-    Del0: Operator<Scanner = Par::Scanner>,
-    Del1: Operator<Scanner = Par::Scanner>,
-    Del0::Response: Combine<Par::Response, Output = First>,
-    First: Combine<Del1::Response, Output = Second>,
-    Second: Response,
-{
-    type Scanner = Par::Scanner;
-    type Response = Second;
-
-    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
-        self.open
-            .as_ref()
-            .and(self.parser.as_ref())
-            .and(self.close.as_ref())
-            .parse_next(input)
     }
 }

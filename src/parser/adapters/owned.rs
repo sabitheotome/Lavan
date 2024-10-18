@@ -7,32 +7,18 @@ use crate::parser::prelude::*;
 /// This `struct` is created by the [`Parser::owned`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
-#[derive(Debug, Clone, Copy, ParserAdapter)]
+#[derive(Debug, Clone, Copy)]
 pub struct Owned<Par> {
-    parser: Par,
+    pub(in crate::parser) parser: Par,
 }
 
-impl<Par> Owned<Par> {
-    pub(crate) fn new(parser: Par) -> Self
-    where
-        Par: Operator,
-        Par::Response: ValueFunctor,
-        <Par::Response as Response>::Value: std::borrow::ToOwned,
-    {
-        Self { parser }
-    }
-}
-
-impl<Par, Val> Operator for Owned<Par>
+#[parser_fn]
+fn owned<par, Val>(
+    self: &Owned<par>,
+) -> <par::Output as Response>::WithVal<<Val as std::borrow::ToOwned>::Owned>
 where
-    Par: Operator,
-    Par::Response: ValueFunctor<Value = Val>,
+    par::Output: ValueResponse<Value = Val>,
     Val: std::borrow::ToOwned,
 {
-    type Scanner = Par::Scanner;
-    type Response = <Par::Response as Response>::WithVal<<Val as std::borrow::ToOwned>::Owned>;
-
-    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
-        self.parser.parse_next(input).map(|value| value.to_owned())
-    }
+    parse![self.parser].map(|value| value.to_owned())
 }

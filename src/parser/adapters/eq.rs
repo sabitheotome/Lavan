@@ -1,28 +1,27 @@
-use crate::parser::prelude::*;
-use crate::output::prelude::*;
-use crate::output::util::try_op;
 use crate::input::prelude::*;
-
-/// A marker for defining a response in case the equallity check fails
-pub struct OrElse<Res, Err>(Res, std::marker::PhantomData<Err>);
+use crate::output::prelude::*;
+use crate::parser::prelude::*;
 
 /// A parser for checking equallity with a value
 ///
 /// This `struct` is created by the [`Parser::eq`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
-#[derive(Debug, Clone, Copy, ParserAdapter)]
+#[derive(Debug, Clone, Copy)]
 pub struct Eq<Par, Val, Mod = (), const I: bool = false> {
-    parser: Par,
-    value: Val,
-    mode: Mod,
+    pub(in crate::parser) parser: Par,
+    pub(in crate::parser) value: Val,
+    pub(in crate::parser) mode: Mod,
 }
 
-/// A parser for checking inequallity with a value
-///
-/// This `struct` is created by the [`Parser::ne`] method on [`Parser`].
-/// See its documentation for more.
-pub type Ne<Par, Val, Mod = ()> = Eq<Par, Val, Mod, true>;
+#[parser_fn]
+fn eq<par, Val>(self: &Eq<par, Val>) -> <par::Output as Predict>::Output
+where
+    par::Output: Predict,
+    val![par::Output]: PartialEq<Val>,
+{
+    parse![self.parser].predict(|v| *v == self.value)
+}
 
 /// A parser for checking equallity with a value,
 /// generating an error in case of failure
@@ -31,6 +30,33 @@ pub type Ne<Par, Val, Mod = ()> = Eq<Par, Val, Mod, true>;
 /// See its documentation for more.
 pub type EqOrElse<Par, Val, Res, Err> = Eq<Par, Val, OrElse<Res, Err>>;
 
+#[parser_fn]
+fn eq_or_else<par, Val, Res, Err>(
+    self: &EqOrElse<par, Val, Res, Err>,
+) -> <par::Output as PredictOrElse<Err>>::Output
+where
+    par::Output: PredictOrElse<Err>,
+    val![par::Output]: PartialEq<Val>,
+    Res: Fn() -> Err,
+{
+    parse![self.parser].predict_or_else(|v| *v == self.value, &self.mode.0)
+}
+
+/// A parser for checking inequallity with a value
+///
+/// This `struct` is created by the [`Parser::ne`] method on [`Parser`].
+/// See its documentation for more.
+pub type Ne<Par, Val, Mod = ()> = Eq<Par, Val, Mod, true>;
+
+#[parser_fn]
+fn ne<par, Val>(self: &Ne<par, Val>) -> <par::Output as Predict>::Output
+where
+    par::Output: Predict,
+    val![par::Output]: PartialEq<Val>,
+{
+    parse![self.parser].predict(|v| *v != self.value)
+}
+
 /// A parser for checking inequallity with a value
 /// generating an error in case of failure
 ///
@@ -38,12 +64,28 @@ pub type EqOrElse<Par, Val, Res, Err> = Eq<Par, Val, OrElse<Res, Err>>;
 /// See its documentation for more.
 pub type NeOrElse<Par, Val, Res, Err> = Ne<Par, Val, OrElse<Res, Err>>;
 
+#[parser_fn]
+fn ne_or_else<par, Val, Res, Err>(
+    self: &NeOrElse<par, Val, Res, Err>,
+) -> <par::Output as PredictOrElse<Err>>::Output
+where
+    par::Output: PredictOrElse<Err>,
+    val![par::Output]: PartialEq<Val>,
+    Res: Fn() -> Err,
+{
+    parse![self.parser].predict_or_else(|v| *v != self.value, &self.mode.0)
+}
+
+/// A marker for defining a response in case the equallity check fails
+pub struct OrElse<Res, Err>(Res, std::marker::PhantomData<Err>);
+
 impl<Par, Val, const I: bool> Eq<Par, Val, (), I> {
-    pub(crate) fn new(parser: Par, value: Val) -> Self
+    pub(crate) fn new<Input>(parser: Par, value: Val) -> Self
     where
-        Par: Operator,
-        Par::Response: ValueFunctor,
-        <Par::Response as Response>::Value: PartialEq<Val>,
+        Input: Scanner,
+        Par: Parser<Input>,
+        Par::Output: ValueResponse,
+        <Par::Output as Response>::Value: PartialEq<Val>,
     {
         Self {
             parser,
@@ -73,71 +115,5 @@ impl<Par, Val, Mod> Eq<Par, Val, Mod> {
             value: self.value,
             mode: self.mode,
         }
-    }
-}
-
-impl<Par, Out, Val> Operator for Eq<Par, Val>
-where
-    Par: Operator<Response = Out>,
-    Out: Filterable,
-    Out::Value: PartialEq<Val>,
-{
-    type Scanner = Par::Scanner;
-    type Response = <Out as Filterable>::Output;
-
-    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
-        self.parser
-            .parse_next(input)
-            .filter_response(|v| *v == self.value)
-    }
-}
-
-impl<Par, Out, Val, Res, Err> Operator for EqOrElse<Par, Val, Res, Err>
-where
-    Par: Operator<Response = Out>,
-    Out: FilterableWithErr<Err>,
-    Out::Value: PartialEq<Val>,
-    Res: Fn() -> Err,
-{
-    type Scanner = Par::Scanner;
-    type Response = <Out as FilterableWithErr<Err>>::Output;
-
-    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
-        self.parser
-            .parse_next(input)
-            .filter_response_or_else(|v| *v == self.value, &self.mode.0)
-    }
-}
-
-impl<Par, Out, Val> Operator for Ne<Par, Val>
-where
-    Par: Operator<Response = Out>,
-    Out: Filterable,
-    Out::Value: PartialEq<Val>,
-{
-    type Scanner = Par::Scanner;
-    type Response = <Out as Filterable>::Output;
-
-    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
-        self.parser
-            .parse_next(input)
-            .filter_response(|v| *v != self.value)
-    }
-}
-
-impl<Par, Out, Val, Res, Err> Operator for NeOrElse<Par, Val, Res, Err>
-where
-    Par: Operator<Response = Out>,
-    Out: FilterableWithErr<Err>,
-    Out::Value: PartialEq<Val>,
-    Res: Fn() -> Err,
-{
-    type Scanner = Par::Scanner;
-    type Response = <Out as FilterableWithErr<Err>>::Output;
-
-    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
-        self.parser
-            .parse_next(input)
-            .filter_response_or_else(|v| *v != self.value, &self.mode.0)
     }
 }

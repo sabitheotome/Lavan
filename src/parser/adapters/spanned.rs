@@ -7,36 +7,19 @@ use crate::parser::prelude::*;
 /// This `struct` is created by the [`Parser::spanned`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
-#[derive(Debug, Clone, Copy, ParserAdapter)]
+#[derive(Debug, Clone, Copy)]
 pub struct Spanned<Par> {
-    parser: Par,
+    pub(in crate::parser) parser: Par,
 }
 
-impl<Par> Spanned<Par> {
-    pub(crate) fn new(parser: Par) -> Self
-    where
-        Par: Operator,
-        Par::Scanner: ScannerSpan,
-        Par::Response: ValueFunctor,
-    {
-        Self { parser }
-    }
-}
-
-impl<Par, Val> Operator for Spanned<Par>
+#[parser_fn]
+fn spanned<par, Val>(
+    self: &Spanned<par>,
+) -> <par::Output as Response>::WithVal<(Val, <INPUT as ScannerSpan>::Span)>
 where
-    Par: Operator,
-    Par::Scanner: ScannerSpan,
-    Par::Response: ValueFunctor<Value = Val>,
+    INPUT: ScannerSpan,
+    par::Output: ValueResponse<Value = Val>,
 {
-    type Scanner = Par::Scanner;
-    type Response =
-        <Par::Response as Response>::WithVal<(Val, <Par::Scanner as ScannerSpan>::Span)>;
-
-    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
-        let start = input.span_offset();
-        self.parser
-            .parse_next(input)
-            .map(|value| (value, input.span_since(start)))
-    }
+    let start = input.span_offset();
+    parse![self.parser].map(|value| (value, input.span_since(start)))
 }

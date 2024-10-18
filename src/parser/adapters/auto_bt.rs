@@ -7,33 +7,13 @@ use crate::parser::prelude::*;
 /// This `struct` is created by the [`Parser::auto_bt`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
-#[derive(Debug, Clone, Copy, ParserAdapter)]
+#[derive(Debug, Clone, Copy)]
 pub struct AutoBt<Par> {
-    parser: Par,
+    pub(in crate::parser) parser: Par,
 }
 
-impl<Par> AutoBt<Par> {
-    pub(crate) fn new(parser: Par) -> Self
-    where
-        Par: Operator,
-        Par::Response: Fallible,
-    {
-        Self { parser }
-    }
-}
-
-impl<Par> Operator for AutoBt<Par>
-where
-    Par: Operator,
-    Par::Response: Fallible,
-{
-    type Scanner = Par::Scanner;
-    type Response = Par::Response;
-
-    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
-        let mut rewind_state = input.savestate();
-        self.parser
-            .parse_next(input)
-            .on_err(|| input.backtrack(rewind_state))
-    }
+#[parser_fn]
+fn auto_bt<par>(self: &AutoBt<par>) -> par::Output {
+    let mut rewind_state = input.savestate();
+    parse![self.parser].on_err(|| input.backtrack(rewind_state))
 }

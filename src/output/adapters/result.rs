@@ -2,8 +2,9 @@ use crate::output::prelude::*;
 
 impl<T, E> Response for Result<T, E> {
     type Value = T;
-    type WithVal<Val> = Result<Val, E>;
     type Error = E;
+    type Residual = Exception<E>;
+    type WithVal<Val> = Result<Val, E>;
     type WithErr<Err> = Result<T, Err>;
 
     fn from_value(value: Self::Value) -> Self {
@@ -12,6 +13,13 @@ impl<T, E> Response for Result<T, E> {
 
     fn from_error(error: Self::Error) -> Self {
         Err(error)
+    }
+
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        match self {
+            Ok(v) => ControlFlow::Continue(v),
+            Err(e) => ControlFlow::Break(e),
+        }
     }
 
     fn map_err<Fun, Err>(self, f: Fun) -> Self::WithErr<Err>
@@ -34,16 +42,15 @@ impl<T, E> Response for Result<T, E> {
     {
         self.and_then(f)
     }
-
-    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
-        match self {
-            Ok(v) => ControlFlow::Continue(v),
-            Err(e) => ControlFlow::Break(e),
-        }
-    }
 }
 
-impl<T, E> ValueFunctor for Result<T, E> {
+impl<T, E> ValueResponse for Result<T, E> {
+    type VoidVal = Unsure<E>;
+
+    fn void_val(self) -> Self::VoidVal {
+        self.map(|_| ()).into()
+    }
+
     fn unwrap(self) -> Self::Value
     where
         Self::Error: std::fmt::Debug,
@@ -52,28 +59,18 @@ impl<T, E> ValueFunctor for Result<T, E> {
     }
 }
 
-impl<T, E> ErrorFunctor for Result<T, E> {
+impl<T, E> ErrorResponse for Result<T, E> {
+    type VoidErr = Option<T>;
+
+    fn void_err(self) -> Self::VoidErr {
+        self.ok()
+    }
+
     fn unwrap_err(self) -> Self::Error
     where
         Self::Value: std::fmt::Debug,
     {
         self.unwrap_err()
-    }
-}
-
-impl<Val, Err> Ignorable for Result<Val, Err> {
-    type Output = Unsure<Err>;
-
-    fn ignore_response(self) -> Self::Output {
-        self.map(|_| ()).into()
-    }
-}
-
-impl<Val, Err> ErrIgnorable for Result<Val, Err> {
-    type Output = Option<Val>;
-
-    fn ignore_err_response(self) -> Self::Output {
-        self.ok()
     }
 }
 
@@ -86,18 +83,18 @@ impl<Val, Err> Fallible for Result<Val, Err> {
     }
 }
 
-impl<Val, Err> FilterableWithErr<Err> for Result<Val, Err> {
+impl<Val, Err> PredictOrElse<Err> for Result<Val, Err> {
     type Output = Result<Val, Err>;
 
-    fn filter_response_or_else(
+    fn predict_or_else(
         self,
-        predicate: impl FnOnce(&Self::Value) -> bool,
-        error: impl FnOnce() -> Err,
+        pred: impl FnOnce(&Self::Value) -> bool,
+        err: impl FnOnce() -> Err,
     ) -> Self::Output {
         match self {
-            Ok(ok) => match predicate(&ok) {
+            Ok(ok) => match pred(&ok) {
                 true => Ok(ok),
-                false => Err(error()),
+                false => Err(err()),
             },
             Err(err) => Err(err),
         }

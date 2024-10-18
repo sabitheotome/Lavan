@@ -7,30 +7,15 @@ use crate::parser::prelude::*;
 /// This `struct` is created by the [`Parser::opt`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
-#[derive(Debug, Clone, Copy, ParserAdapter)]
+#[derive(Debug, Clone, Copy)]
 pub struct Opt<Par> {
-    parser: Par,
+    pub(in crate::parser) parser: Par,
 }
 
-impl<Par> Opt<Par> {
-    pub(crate) fn new(parser: Par) -> Self
-    where
-        Par: Operator,
-        Par::Response: Fallible,
-    {
-        Self { parser }
-    }
-}
-
-impl<Par> Operator for Opt<Par>
+#[parser_fn]
+fn opt<par>(self: &Opt<par>) -> <par::Output as Fallible>::Optional
 where
-    Par: Operator,
-    Par::Response: Fallible,
+    par::Output: Fallible,
 {
-    type Scanner = Par::Scanner;
-    type Response = <Par::Response as Fallible>::Optional;
-
-    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
-        self.parser.as_ref().auto_bt().parse_next(input).optional()
-    }
+    parse![parser![self.parser].auto_bt()].optional()
 }

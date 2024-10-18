@@ -3,14 +3,23 @@ use crate::output::prelude::*;
 impl<T> Response for Option<T> {
     type Value = T;
     type Error = ();
+    type Residual = Exception<()>;
     type WithVal<Val> = Option<Val>;
     type WithErr<Err> = Option<T>;
+
     fn from_value(value: Self::Value) -> Self {
         Some(value)
     }
 
     fn from_error((): Self::Error) -> Self {
         None
+    }
+
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        match self {
+            Some(v) => ControlFlow::Continue(v),
+            None => ControlFlow::Break(()),
+        }
     }
 
     fn map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
@@ -39,30 +48,21 @@ impl<T> Response for Option<T> {
     {
         self.and_then(f)
     }
-
-    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
-        match self {
-            Some(v) => ControlFlow::Continue(v),
-            None => ControlFlow::Break(()),
-        }
-    }
 }
 
-impl<T> ValueFunctor for Option<T> {
+impl<T> ValueResponse for Option<T> {
+    type VoidVal = bool;
+
+    fn void_val(self) -> Self::VoidVal {
+        self.is_some()
+    }
+
     fn unwrap(self) -> Self::Value {
         self.unwrap()
     }
 }
 
-impl<Val> Ignorable for Option<Val> {
-    type Output = bool;
-
-    fn ignore_response(self) -> Self::Output {
-        self.is_some()
-    }
-}
-
-impl<Val> ErrAttachable for Option<Val> {
+impl<Val> AttachErr for Option<Val> {
     type Output<Err> = Result<Val, Err>;
 
     fn attach_err_to_response<E>(self, value: impl FnOnce() -> E) -> Self::Output<E> {
@@ -70,13 +70,13 @@ impl<Val> ErrAttachable for Option<Val> {
     }
 }
 
-impl<Fun, Val, Err> ErrMappable<Fun> for Option<Val>
+impl<Fun, Val, Err> SelectErr<Fun> for Option<Val>
 where
     Fun: Fn() -> Err,
 {
     type Output = Result<Val, Err>;
 
-    fn err_map_response(self, f: &Fun) -> Self::Output {
+    fn sel_err(self, f: &Fun) -> Self::Output {
         match self {
             Some(value) => Ok(value),
             None => Err(f()),
@@ -93,23 +93,23 @@ impl<Val> Fallible for Option<Val> {
     }
 }
 
-impl<Val> Filterable for Option<Val> {
+impl<Val> Predict for Option<Val> {
     type Output = Option<Val>;
 
-    fn filter_response(self, predicate: impl FnOnce(&Self::Value) -> bool) -> Self::Output {
+    fn predict(self, predicate: impl FnOnce(&Self::Value) -> bool) -> Self::Output {
         self.filter(predicate)
     }
 }
 
-impl<Val, Err> FilterableWithErr<Err> for Option<Val> {
+impl<Val, Err> PredictOrElse<Err> for Option<Val> {
     type Output = Result<Val, Err>;
 
-    fn filter_response_or_else(
+    fn predict_or_else(
         self,
-        predicate: impl FnOnce(&Self::Value) -> bool,
-        error: impl FnOnce() -> Err,
+        pred: impl FnOnce(&Self::Value) -> bool,
+        err: impl FnOnce() -> Err,
     ) -> Self::Output {
-        self.filter(predicate).ok_or_else(error)
+        self.filter(pred).ok_or_else(err)
     }
 }
 

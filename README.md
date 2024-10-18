@@ -18,4 +18,4 @@
 A library for empowering users to build concise parsers, either for domain-specific, or general-purpose languages.
 
 > [!WARNING]  
-> This project is currently experimental. Literally, everything is subject to changes, even the repository link and the license. We STRONGLY ADVISE you to NOT USE this library in production.
+> This project is currently experimental. Literally everything is subject to changes. Even the repository link and the license. We STRONGLY ADVISE you to NOT USE this library in production.

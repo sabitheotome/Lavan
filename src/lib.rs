@@ -1,17 +1,34 @@
 #![allow(unused)]
 #![cfg(feature = "experimental")]
 
+#[macro_export]
+macro_rules! or {
+    ($first:expr $(,$tail:expr)+ $(,)?) => {
+        $first$(.or($tail))+
+    }
+}
+
+fn a() {
+    use crate::prelude::*;
+
+    parser::sources::nop()
+        .repeat_exact(0)
+        .parse_once(&mut "fuck".chars());
+}
+
 pub mod parser {
     pub mod adapters {
         pub mod and;
         pub mod as_ref;
         pub mod auto_bt;
         pub mod delimited;
+        pub mod discard;
         pub mod eq;
         pub mod filter;
-        pub mod ignore;
+        pub mod infer;
         pub mod map;
         pub mod map_err;
+        pub mod never_fails;
         pub mod ok;
         pub mod opt;
         pub mod or;
@@ -32,6 +49,7 @@ pub mod parser {
 pub mod output {
     pub(crate) mod adapters {
         pub mod bool;
+        pub mod exception;
         pub mod option;
         pub mod result;
         pub mod sure;

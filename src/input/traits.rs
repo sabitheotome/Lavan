@@ -1,7 +1,7 @@
 use super::adapters::cursor::Cursor;
 use crate::parser::{
     adapters::slice::Slice,
-    traits::{Operator, Parse, Parser},
+    traits::{Parse, Parser},
 };
 
 pub trait Scanner: Iterator {

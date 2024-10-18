@@ -50,8 +50,7 @@ pub fn identifier<'a, I: 'a + StrStream<'a>>() -> impl Parser<I, Output = Option
         .slice()
 }
 
-pub fn ascii_identifier<'a, I: 'a + StrStream<'a>>() -> impl Parser<I, Output = Option<&'a str>>
-{
+pub fn ascii_identifier<'a, I: 'a + StrStream<'a>>() -> impl Parser<I, Output = Option<&'a str>> {
     any_if(char::is_ascii_alphabetic)
         .or(any_eq('_'))
         .discard()
@@ -59,7 +58,7 @@ pub fn ascii_identifier<'a, I: 'a + StrStream<'a>>() -> impl Parser<I, Output = 
             any_if(char::is_ascii_alphanumeric)
                 .or(any_eq('_'))
                 .discard()
-                .repeat(),
+                .repeat_eoi(),
         )
         .slice()
 }
@@ -81,16 +80,15 @@ pub fn decimal_float<'a, I: 'a + StrStream<'a>>() -> impl Parser<I, Output = Opt
         .slice()
 }
 
-pub fn hexadecimal_integer<'a, I: 'a + StrStream<'a>>(
-) -> impl Parser<I, Output = Option<&'a str>> {
+pub fn hexadecimal_integer<'a, I: 'a + StrStream<'a>>() -> impl Parser<I, Output = Option<&'a str>>
+{
     any_if(char::is_ascii_hexdigit)
         .discard()
         .repeat_min(1)
         .slice()
 }
 
-pub fn decimal_integer<'a, I: 'a + StrStream<'a>>() -> impl Parser<I, Output = Option<&'a str>>
-{
+pub fn decimal_integer<'a, I: 'a + StrStream<'a>>() -> impl Parser<I, Output = Option<&'a str>> {
     any_if(char::is_ascii_digit).discard().repeat_min(1).slice()
 }
 

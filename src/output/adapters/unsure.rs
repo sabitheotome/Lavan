@@ -21,6 +21,13 @@ impl<E> Unsure<E> {
     {
         self.into_result().unwrap();
     }
+
+    pub fn unwrap_err(self) -> E
+    where
+        E: std::fmt::Debug,
+    {
+        self.into_result().unwrap_err()
+    }
 }
 
 impl<E> From<Result<(), E>> for Unsure<E> {
@@ -35,9 +42,25 @@ impl<E> From<Unsure<E>> for Result<(), E> {
     }
 }
 
+impl<E> From<Option<E>> for Unsure<E> {
+    fn from(value: Option<E>) -> Self {
+        match value {
+            Some(err) => Unsure::err(err),
+            None => Unsure::ok(),
+        }
+    }
+}
+
+impl<E> From<Unsure<E>> for Option<E> {
+    fn from(value: Unsure<E>) -> Self {
+        value.0.err()
+    }
+}
+
 impl<T> Response for Unsure<T> {
     type Value = ();
     type Error = T;
+    type Residual = Exception<T>;
     type WithVal<Val> = Unsure<T>;
     type WithErr<Err> = Unsure<Err>;
 
@@ -47,6 +70,10 @@ impl<T> Response for Unsure<T> {
 
     fn from_error(error: Self::Error) -> Self {
         Unsure::err(error)
+    }
+
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        self.into_result().control_flow()
     }
 
     fn map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
@@ -73,13 +100,15 @@ impl<T> Response for Unsure<T> {
     {
         f(())
     }
-
-    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
-        self.into_result().control_flow()
-    }
 }
 
-impl<Err> ErrorFunctor for Unsure<Err> {
+impl<Err> ErrorResponse for Unsure<Err> {
+    type VoidErr = bool;
+
+    fn void_err(self) -> Self::VoidErr {
+        self.into_result().is_ok()
+    }
+
     fn unwrap_err(self) -> Self::Error
     where
         Self::Value: std::fmt::Debug,
@@ -88,30 +117,22 @@ impl<Err> ErrorFunctor for Unsure<Err> {
     }
 }
 
-impl<Fun, Val, Err> Mappable<Fun> for Unsure<Err>
+impl<Fun, Val, Err> Select<Fun> for Unsure<Err>
 where
     Fun: Fn() -> Val,
 {
     type Output = Result<Val, Err>;
 
-    fn map_response(self, f: &Fun) -> Self::Output {
+    fn sel(self, f: &Fun) -> Self::Output {
         self.into_result().map(|()| f())
     }
 }
 
-impl<Err> Attachable for Unsure<Err> {
+impl<Err> Attach for Unsure<Err> {
     type Output<V> = Result<V, Err>;
 
     fn attach_to_response<V>(self, value: impl FnOnce() -> V) -> Self::Output<V> {
         self.into_result().map(|()| value())
-    }
-}
-
-impl<Err> ErrIgnorable for Unsure<Err> {
-    type Output = bool;
-
-    fn ignore_err_response(self) -> Self::Output {
-        self.into_result().is_ok()
     }
 }
 
@@ -131,6 +152,7 @@ where
     Out: Response,
 {
     type Output = <Result<(), Err> as Combine<Out>>::Output;
+
     fn apply(self, f: &Fun) -> Self::Output {
         self.into_result().combine(|| f())
     }

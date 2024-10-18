@@ -10,33 +10,16 @@ pub type FnMapErr<Par, Val0, Val1> = MapErr<Par, fn(Val0) -> Val1>;
 /// This `struct` is created by the [`Parser::map_err`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
-#[derive(Debug, Clone, Copy, ParserAdapter)]
+#[derive(Debug, Clone, Copy)]
 pub struct MapErr<Par, Fun> {
-    parser: Par,
-    function: Fun,
+    pub(in crate::parser) parser: Par,
+    pub(in crate::parser) function: Fun,
 }
 
-impl<Par, Fun> MapErr<Par, Fun> {
-    pub(crate) fn new(parser: Par, function: Fun) -> Self
-    where
-        Par: Operator,
-        Par::Response: ErrMappable<Fun>,
-    {
-        MapErr { parser, function }
-    }
-}
-
-impl<Par, Fun> Operator for MapErr<Par, Fun>
+#[parser_fn]
+fn map_err<par, Fun>(self: &MapErr<par, Fun>) -> <par::Output as SelectErr<Fun>>::Output
 where
-    Par: Operator,
-    Par::Response: ErrMappable<Fun>,
+    par::Output: SelectErr<Fun>,
 {
-    type Scanner = Par::Scanner;
-    type Response = <Par::Response as ErrMappable<Fun>>::Output;
-
-    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
-        self.parser
-            .parse_next(input)
-            .err_map_response(&self.function)
-    }
+    parse![self.parser].sel_err(&self.function)
 }

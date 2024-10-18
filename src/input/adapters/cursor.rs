@@ -1,4 +1,4 @@
-use crate::prelude::{Scanner, ScannerSlice, ScannerSpan};
+use crate::prelude::{IntoScanner, Scanner, ScannerSlice, ScannerSpan};
 
 #[derive(Debug, Clone)]
 #[non_exhaustive]

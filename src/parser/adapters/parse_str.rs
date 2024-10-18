@@ -8,39 +8,19 @@ use std::marker::PhantomData;
 /// This `struct` is created by the [`Parser::parse_str`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
-#[derive(Debug, Clone, Copy, ParserAdapter)]
+#[derive(Debug, Clone, Copy)]
 pub struct ParseStr<Par, T> {
-    parser: Par,
-    convert_to: PhantomData<T>,
+    pub(in crate::parser) parser: Par,
+    pub(in crate::parser) convert_to: PhantomData<T>,
 }
 
-impl<Par, T> ParseStr<Par, T> {
-    pub(crate) fn new(parser: Par) -> Self
-    where
-        Par: Operator,
-        Par::Response: Apply<fn(&str) -> Result<T, T::Err>>,
-        T: std::str::FromStr,
-    {
-        Self {
-            parser,
-            convert_to: PhantomData,
-        }
-    }
-}
-
-impl<'a, Par, T> Operator for ParseStr<Par, T>
+#[parser_fn]
+fn parse_str<par, T>(
+    self: &ParseStr<par, T>,
+) -> <par::Output as Apply<fn(&str) -> Result<T, T::Err>>>::Output
 where
-    Par: Operator,
-    Par::Response: Apply<fn(&str) -> Result<T, T::Err>>,
+    par::Output: Apply<fn(&str) -> Result<T, T::Err>>,
     T: std::str::FromStr,
 {
-    type Scanner = Par::Scanner;
-    type Response = <Par::Response as Apply<fn(&str) -> Result<T, T::Err>>>::Output;
-
-    fn parse_next(&self, input: &mut Self::Scanner) -> Self::Response {
-        self.parser
-            .as_ref()
-            .then(|str: &str| str.parse::<T>())
-            .parse_next(input)
-    }
+    parse![parser![self.parser].then(|str: &str| str.parse::<T>())]
 }
