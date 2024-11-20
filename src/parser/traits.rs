@@ -1,47 +1,53 @@
-use super::adapters::{
-    and::And,
-    as_ref::AsRef,
-    auto_bt::AutoBt,
-    delimited::Delimited,
-    eq::{Eq, Ne},
-    filter::{Filter, FilterNot},
-    ignore::Discard,
-    map::Map,
-    map_err::MapErr,
-    opt::Opt,
-    or::Or,
-    owned::Owned,
-    parse_str::ParseStr,
-    repeat::{mode::*, *},
-    slice::Slice,
-    spanned::Spanned,
-    then::Then,
-    try_with::TryWith,
-    unwrapped::Unwrapped,
-};
-use super::util::assoc::{err, val};
-use crate::stream::traits::{IntoStream, Stream};
-use crate::{response::prelude::*, stream::traits::StreamSlice};
+use std::process::Output;
 
-pub trait Parser {
-    /// The input [`Stream`] iterated by the parser
-    type Input: Stream;
-    /// The output [`Response`] returned by the parser
+use super::{
+    adapters::{
+        and::And,
+        as_ref::{AsMut, AsRef},
+        auto_bt::AutoBt,
+        catch::Catch,
+        del::Del,
+        delimited::Delimited,
+        eq::{Eq, Ne},
+        filter::{Filter, FilterNot},
+        lift::Lift,
+        map::{Map, MapErr, Sel, SelErr},
+        ok::Ok,
+        opt::Opt,
+        or::Or,
+        owned::Owned,
+        parse_str::ParseStr,
+        persist::Persist,
+        repeat::adapters::*,
+        slice::Slice,
+        spanned::Spanned,
+        then::Then,
+        try_with::TryWith,
+        unwrapped::Unwrapped,
+    },
+    sources::{
+        adapters::{Any, Func},
+        any, func,
+    },
+};
+use crate::input::prelude::*;
+use crate::response::prelude::*;
+
+pub trait IterativeParser<Input> {
     type Output: Response;
 
-    /// Parsers the referenced `input`, advancing the stream
+    /// Partially parses the referenced `input`, advancing the stream, consuming the parser
     ///
     /// # Examples
     /// Basic usage:
     /// ```
     /// use lavan::prelude::*;
-    /// use lavan::stream::traits::IntoStream;
     ///
-    /// let mut stream = "Hello, World!".into_stream();
-    /// let first_char = any().parse_stream(&mut stream);
+    /// let mut input = "Hello, World!".chars();
+    /// let first_char = any().parse_once(&mut input);
     /// assert_eq!(first_char, Some('H'));
     /// ```
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output;
+    fn parse_once(self, input: &mut Input) -> Self::Output;
 
     /// Parses the token sequence `input`
     ///
@@ -54,8 +60,11 @@ pub trait Parser {
     /// let first_char = any().evaluate(input);
     /// assert_eq!(first_char, Some('H'));
     /// ```
-    fn evaluate(&self, input: impl IntoStream<Stream = Self::Input>) -> Self::Output {
-        self.parse_stream(&mut input.into_stream())
+    fn evaluate(self, input: impl IntoStream<IntoStream = Input>) -> Self::Output
+    where
+        Self: Sized,
+    {
+        self.parse_once(&mut input.into_scanner())
     }
 
     /// Take this parser by reference, without consuming it.
@@ -80,11 +89,40 @@ pub trait Parser {
     /// let yesOrNo = super_complex_parser.evaluate(input);
     /// assert_eq!(yesOrNo, Some('Y'));
     /// ```
-    fn as_ref(&self) -> AsRef<'_, Self>
+    fn as_ref<'a>(&self) -> AsRef<'_, Self>
     where
         Self: Sized,
     {
-        AsRef::new(self)
+        AsRef { parser: self }
+    }
+
+    /// Take this parser by reference, without consuming it.
+    /// This operation can be useful if you want to reuse the parser later.
+    ///
+    /// Since [parse_stream](Parser::parse_stream) takes `self` by reference,
+    /// it is possible to plug adapters without losing ownership.
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "YesOrNo";
+    ///
+    /// let complex_parser = any(); // imagine this a very complex parser
+    /// let super_complex_parser =
+    ///     // you can use the same parser twice!
+    ///     complex_parser.as_ref().eq('Y').or(
+    ///         complex_parser.as_ref().eq('N')
+    ///     );
+    /// let yesOrNo = super_complex_parser.evaluate(input);
+    /// assert_eq!(yesOrNo, Some('Y'));
+    /// ```
+    fn as_mut<'a>(&mut self) -> AsMut<'_, Self>
+    where
+        Self: Sized,
+    {
+        AsMut { parser: self }
     }
 
     /// Maps the response's [Value](Response::Value) to another type.
@@ -99,12 +137,15 @@ pub trait Parser {
     ///     any().map(char::is_uppercase).evaluate(input);
     /// assert_eq!(is_uppercase, Some(true));
     /// ```
-    fn map<Fun>(self, f: Fun) -> Map<Self, Fun>
+    fn map<Val, Fun>(self, f: Fun) -> Map<Self, Fun>
     where
         Self: Sized,
-        Self::Output: Mappable<Fun>,
+        Fun: FnOnce(val![Self]) -> Val,
     {
-        Map::new(self, f)
+        Map {
+            parser: self,
+            function: f,
+        }
     }
 
     /// Maps the [Error](Response::Error) contained in the
@@ -123,14 +164,68 @@ pub trait Parser {
     ///     .map_err(|| ExpectedSomethingError).evaluate(input);
     /// assert_eq!(result, Err(ExpectedSomethingError));
     /// ```
-    fn map_err<Fun>(self, f: Fun) -> MapErr<Self, Fun>
+    fn map_err<Fun, Err>(self, f: Fun) -> MapErr<Self, Fun>
     where
         Self: Sized,
-        Self::Output: ErrMappable<Fun>,
+        Fun: FnOnce(err![Self]) -> Err,
     {
-        MapErr::new(self, f)
+        MapErr {
+            parser: self,
+            function: f,
+        }
     }
 
+    /// Maps the response's [Value](Response::Value) to another type.
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "A";
+    /// let is_uppercase: Option<bool> =
+    ///     any().map(char::is_uppercase).evaluate(input);
+    /// assert_eq!(is_uppercase, Some(true));
+    /// ```
+    fn sel<Fun>(self, f: Fun) -> Sel<Self, Fun>
+    where
+        Self: Sized,
+        Self::Output: Select<Fun>,
+    {
+        Sel {
+            parser: self,
+            function: f,
+        }
+    }
+
+    /// Maps the [Error](Response::Error) contained in the
+    /// [Output](Parser::Output) to another type.
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// #[derive(Debug, PartialEq)]
+    /// struct ExpectedSomethingError;
+    ///
+    /// let input = "Nothing";
+    /// let result: Result<&str,  ExpectedSomethingError> = word("Something")
+    ///     .map_err(|| ExpectedSomethingError).evaluate(input);
+    /// assert_eq!(result, Err(ExpectedSomethingError));
+    /// ```
+    fn sel_err<Fun>(self, f: Fun) -> SelErr<Self, Fun>
+    where
+        Self: Sized,
+        Self::Output: SelectErr<Fun>,
+    {
+        SelErr {
+            parser: self,
+            function: f,
+        }
+    }
+
+    // TODO: better example
     /// Map the value contained in the [Output](Parser::Output) to a [Response].
     ///
     /// # Examples
@@ -139,7 +234,7 @@ pub trait Parser {
     /// use lavan::prelude::*;
     ///
     /// let input = "A";
-    /// let maybe_uppercase : Option<char> = any()
+    /// let maybe_uppercase: Option<char> = any()
     ///     .then(|c: char| Some(c)
     ///         .filter(char::is_ascii_uppercase))
     ///     .evaluate(input);
@@ -148,14 +243,16 @@ pub trait Parser {
     fn then<Fun>(self, f: Fun) -> Then<Self, Fun>
     where
         Self: Sized,
-        Self::Output: Bindable<Fun>,
+        Self::Output: Apply<Fun>,
     {
-        Then::new(self, f)
+        Then {
+            parser: self,
+            function: f,
+        }
     }
 
-    // TODO: rename to "discard"
     /// Discards the response's [Value](Response::Value).
-    /// This operation converts the [Output](Parser::Output) into a [`Attachable`]
+    /// This operation converts the [Output](Parser::Output) into an [`Attachable`]
     /// equivalent, defined by the [Ignorable] trait.
     ///
     /// This operation can be required by some operations, to check if the
@@ -172,12 +269,21 @@ pub trait Parser {
     ///     .discard().repeat_eoi().evaluate(input);
     /// assert_eq!(is_all_alphabetic, true);
     /// ```
-    fn discard(self) -> Discard<Self>
+    fn del(self) -> Del<Self>
     where
         Self: Sized,
-        Self::Output: Ignorable,
+        Self::Output: ValueResponse,
     {
-        Discard::new(self)
+        Del { parser: self }
+    }
+
+    // TODO: Documentation
+    fn ok(self) -> Ok<Self>
+    where
+        Self: Sized,
+        Self::Output: ErrorResponse,
+    {
+        Ok { parser: self }
     }
 
     /// Automatically backtracks if the parsing has failed
@@ -205,9 +311,16 @@ pub trait Parser {
     fn auto_bt(self) -> AutoBt<Self>
     where
         Self: Sized,
-        Self::Output: Recoverable,
+        Self::Output: Fallible,
     {
-        AutoBt::new(self)
+        AutoBt { parser: self }
+    }
+
+    fn unchecked_auto_bt(self) -> AutoBt<Self>
+    where
+        Self: Sized,
+    {
+        AutoBt { parser: self }
     }
 
     /// Make a fallible [Output](Parser::Output) response into a infallible response.
@@ -230,9 +343,17 @@ pub trait Parser {
     fn opt(self) -> Opt<Self>
     where
         Self: Sized,
-        Self::Output: Optionable,
+        Self::Output: Fallible,
     {
-        Opt::new(self)
+        Opt { parser: self }
+    }
+
+    // TODO: Documentation
+    fn lift(self) -> Lift<Self>
+    where
+        Self: Sized,
+    {
+        Lift { parser: self }
     }
 
     /// Yield a slice of the [Input](Parser::Input), defined by the startijng
@@ -251,10 +372,13 @@ pub trait Parser {
     fn slice<'a>(self) -> Slice<'a, Self>
     where
         Self: Sized,
-        Self::Input: StreamSlice<'a>,
-        Self::Output: Attachable,
+        Input: StreamSlice,
+        Self::Output: Attach,
     {
-        Slice::new(self)
+        Slice {
+            parser: self,
+            _marker: std::marker::PhantomData,
+        }
     }
 
     /// Filters the response's [Value](Response::Value) through a predicate.
@@ -276,10 +400,14 @@ pub trait Parser {
     fn filter<Fun>(self, f: Fun) -> Filter<Self, Fun>
     where
         Self: Sized,
-        Self::Output: ValueFunctor,
+        Self::Output: ValueResponse,
         Fun: Fn(&<Self::Output as Response>::Value) -> bool,
     {
-        Filter::new(self, f)
+        Filter {
+            parser: self,
+            predicate: f,
+            mode: (),
+        }
     }
 
     /// Filters the response's [Value](Response::Value) through a inverted predicate.
@@ -302,7 +430,7 @@ pub trait Parser {
     fn filter_not<Fun>(self, f: Fun) -> FilterNot<Self, Fun>
     where
         Self: Sized,
-        Self::Output: ValueFunctor,
+        Self::Output: ValueResponse,
         Fun: Fn(&<Self::Output as Response>::Value) -> bool,
     {
         self.filter(f).not()
@@ -326,10 +454,14 @@ pub trait Parser {
     fn eq<Val>(self, v: Val) -> Eq<Self, Val>
     where
         Self: Sized,
-        Self::Output: ValueFunctor,
+        Self::Output: ValueResponse,
         <Self::Output as Response>::Value: PartialEq<Val>,
     {
-        Eq::new(self, v)
+        Eq {
+            parser: self,
+            value: v,
+            mode: (),
+        }
     }
 
     /// Make an inequallity condition for the response [Value](Response::Value).
@@ -351,62 +483,130 @@ pub trait Parser {
     fn ne<Val>(self, v: Val) -> Ne<Self, Val>
     where
         Self: Sized,
-        Self::Output: ValueFunctor,
+        Self::Output: ValueResponse,
         <Self::Output as Response>::Value: PartialEq<Val>,
     {
         self.eq(v).not()
     }
 
     // TODO: Documentation
+    fn boxed<T>(self) -> super::adapters::map::SelFn<Self, T, Box<T>>
+    where
+        Self: Sized,
+        Self::Output: Select<fn(T) -> Box<T>>,
+    {
+        self.sel(Box::new)
+    }
+
+    /// Convert the value contained in the [Output](Parser::Output) into `T`
+    /// where `T` implements [FromStr](std::str::FromStr).
+    ///
+    // TODO: # Examples
+    // Basic usage:
+    //```
+    // use lavan::prelude::*;
+    //
+    // let input = "7";
+    // let digit_to_u32 : Result<u32, ParseIntError> = any().slice()
+    //     .parse_str::<u32>().evaluate(input);
+    // assert_eq!(digit_to_u32, Some(7));
+    // ```
     fn parse_str<T>(self) -> ParseStr<Self, T>
     where
         Self: Sized,
-        Self::Output: Bindable<fn(&str) -> Result<T, T::Err>>,
+        Self::Output: Apply<fn(&str) -> Result<T, T::Err>>,
         T: std::str::FromStr,
     {
-        ParseStr::new(self)
+        ParseStr {
+            parser: self,
+            convert_to: std::marker::PhantomData,
+        }
     }
 
     // TODO: Documentation
     fn unwrapped(self) -> Unwrapped<Self>
     where
         Self: Sized,
-        Self::Output: Fallible + ValueFunctor,
+        Self::Output: Fallible + ValueResponse,
         <Self::Output as Response>::Error: std::fmt::Debug,
     {
-        Unwrapped::new(self)
+        Unwrapped { parser: self }
     }
 
     // TODO: Documentation
     fn owned(self) -> Owned<Self>
     where
         Self: Sized,
-        Self::Output: ValueFunctor,
+        Self::Output: ValueResponse,
         <Self::Output as Response>::Value: std::borrow::ToOwned,
     {
-        Owned::new(self)
+        Owned { parser: self }
     }
 
     // TODO: Documentation
     fn spanned(self) -> Spanned<Self>
     where
         Self: Sized,
-        Self::Output: ValueFunctor,
+        Input: StreamSpan,
+        Self::Output: ValueResponse,
     {
-        Spanned::new(self)
+        Spanned { parser: self }
     }
 
     // TODO: Documentation
-    fn delimited<Del, First, Second>(self, open: Del, close: Del) -> Delimited<Self, Del>
+    fn delimited<Del0, Del1, First, Second>(
+        self,
+        open: Del0,
+        close: Del1,
+    ) -> Delimited<Self, Del0, Del1>
     where
         Self: Sized,
-        Self::Input: Stream<Token = Del>,
-        Del: PartialEq,
-        Option<Del>: Combinable<Self::Output, Output = First>,
-        First: Combinable<Option<Del>, Output = Second>,
+        Del0: IterativeParser<Input>,
+        Del1: IterativeParser<Input>,
+        Del0::Output: Combine<Self::Output, Output = First>,
+        First: Combine<Del1::Output, Output = Second>,
         Second: Response,
     {
-        Delimited::new(self, open, close)
+        Delimited {
+            parser: self,
+            open,
+            close,
+        }
+    }
+
+    // TODO: Documentation
+    fn persist(self) -> Persist<Self>
+    where
+        Self: Sized,
+        //Self::Output: Fallible<Value: Fallible>,
+    {
+        Persist(self)
+    }
+
+    /// Combine two parsers, running them subsequently.
+    /// The output will be the combination of the two outputs,
+    /// defined by the `trait` [Combinable].
+    ///
+    /// # Examples
+    /// Basic usage:
+    ///```
+    /// use lavan::prelude::*;
+    ///
+    /// let input = "ABC";
+    /// let abc: Option<((char, char), char)> =
+    ///     any().and(any()).and(any()).evaluate(input);
+    /// assert_eq!(abc, Some((('A', 'B'), 'C')));
+    /// ```
+    fn catch<Par>(self, catch: Par) -> Catch<Self, Par>
+    where
+        Self: Sized,
+        Self::Output: Switch<Par::Output, Output: Fallible<Value: Fallible>>,
+        Par: IterativeParser<Input>,
+    {
+        Catch {
+            parser_try: self,
+            parser_catch: catch,
+        }
     }
 
     /// Combine two parsers, running them subsequently.
@@ -426,10 +626,13 @@ pub trait Parser {
     fn and<Par>(self, parser: Par) -> And<Self, Par>
     where
         Self: Sized,
-        Self::Output: Combinable<Par::Output>,
-        Par: Parser<Input = Self::Input>,
+        Self::Output: Combine<Par::Output>,
+        Par: IterativeParser<Input>,
     {
-        And::new(self, parser)
+        And {
+            parser0: self,
+            parser1: parser,
+        }
     }
 
     /// Define a fallback parser in case this fails. Essentially, it
@@ -470,11 +673,13 @@ pub trait Parser {
     fn or<Par>(self, parser: Par) -> Or<Self, Par>
     where
         Self: Sized,
-        Self::Output:
-            Switchable<<Par::Output as Response>::WithVal<<Self::Output as Response>::Value>>,
-        Par: Parser<Input = Self::Input>,
+        //Self::Output: Switchable<<Par::Output as Response>::WithVal<<Self::Output as Response>::Value>>,
+        Par: IterativeParser<Input>,
     {
-        Or::new(self, parser)
+        Or {
+            parser0: self,
+            parser1: parser,
+        }
     }
 
     /// Try making a variant with another parser. Essentially, it tries
@@ -519,25 +724,27 @@ pub trait Parser {
     ///     .to_vec()
     ///     .evaluate(input);
     /// assert_eq!(output.value(), expected_out);
-    //```
-    fn try_with<Par, Fun, Out0, Out1>(self, parser: Par, function: Fun) -> TryWith<Self, Par, Fun>
+    ///```
+    fn try_with<Par, Fun, Out1>(self, parser: Par, f: Fun) -> TryWith<Self, Par, Fun>
     where
-        Self: Sized + Parser<Output = Out0>,
-        Par: Parser<Output = Out1, Input = Self::Input>,
-        Fun: Fn(Out0::Value, Out1::Value) -> std::ops::ControlFlow<Out0::Value, Out0::Value>,
-        Out0: Response,
-        Out1: Response<Error = Out0::Error>,
+        Self: Sized,
+        Par: IterativeParser<Input, Output = Out1>,
+        Fun: Fn(val![Self], Out1::Value) -> std::ops::ControlFlow<val![Self], val![Self]>,
+        Out1: Response<Error = err![Self]>,
     {
-        TryWith::new(self, parser, function)
+        TryWith {
+            parser0: self,
+            parser1: parser,
+            function: f,
+        }
     }
 
     // TODO: Documentation
-    fn repeat(self) -> Repeat<Self>
+    fn repeat(self) -> Repeater<Self>
     where
         Self: Sized,
-        Self::Output: Recoverable + Fallible,
     {
-        Repeat::new(self, UntilErr(()))
+        Repeater::new(self)
     }
 
     // TODO: Documentation
@@ -545,36 +752,7 @@ pub trait Parser {
     where
         Self: Sized,
     {
-        RepeatEOI::new(self, UntilEOI(()))
-    }
-
-    // TODO: Documentation
-    // TODO: usize -> NonZeroUsize
-    fn repeat_min(self, count: usize) -> RepeatMin<Self>
-    where
-        Self: Sized,
-    {
-        assert!(count >= 1);
-        RepeatMin::new(self, Minimum(count))
-    }
-
-    // TODO: Documentation
-    fn repeat_min_eoi(self, count: usize) -> RepeatMinEOI<Self>
-    where
-        Self: Sized,
-    {
-        assert!(count >= 1);
-        RepeatMinEOI::new(self, MinimumEOI(count))
-    }
-
-    // TODO: Documentation
-    fn repeat_max(self, count: usize) -> RepeatMax<Self>
-    where
-        Self: Sized,
-        Self::Output: Fallible,
-    {
-        assert!(count >= 1);
-        RepeatMax::new(self, Maximum(count))
+        self.repeat().until_eoi()
     }
 
     // TODO: Documentation
@@ -583,70 +761,142 @@ pub trait Parser {
         Self: Sized,
     {
         assert!(count >= 1);
-        RepeatExact::new(self, Exact(count))
+        self.repeat().exact(count)
+    }
+
+    // TODO: Documentation
+    fn repeat_max(self, count: usize) -> RepeatMax<Self>
+    where
+        Self: Sized,
+    {
+        assert!(count >= 1);
+        self.repeat().max(count)
+    }
+
+    fn repeat_min(self, count: usize) -> RepeatMin<Self>
+    where
+        Self: Sized,
+    {
+        assert!(count >= 1);
+        self.repeat().min(count)
+    }
+
+    // TODO: Documentation
+    fn repeat_min_eoi(self, count: usize) -> RepeatMinEOI<Self>
+    where
+        Self: Sized,
+    {
+        assert!(count >= 1);
+        self.repeat().min(count).until_eoi()
     }
 }
 
-impl<Out: Response, Str: Stream> Parser for fn(&mut Str) -> Out {
-    type Input = Str;
-    type Output = Out;
+pub trait IterativeParserMut<Input>: IterativeParser<Input> {
+    /// Partially parses the referenced `input`, advancing the stream
+    ///
+    /// # Examples
+    /// Basic usage:
+    /// ```
+    /// use lavan::prelude::*;
+    /// use lavan::stream::traits::IntoStream;
+    ///
+    /// let mut stream = "Hello, World!".into_stream();
+    /// let first_char = any().next(&mut stream);
+    /// assert_eq!(first_char, Some('H'));
+    /// ```
+    fn parse_as_mut(&mut self, input: &mut Input) -> Self::Output;
+}
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
+pub trait IterativeParserRef<Input>: IterativeParserMut<Input> {
+    /// Partially parses the referenced `input`, advancing the stream
+    ///
+    /// # Examples
+    /// Basic usage:
+    /// ```
+    /// use lavan::prelude::*;
+    /// use lavan::stream::traits::IntoStream;
+    ///
+    /// let mut stream = "Hello, World!".into_stream();
+    /// let first_char = any().next(&mut stream);
+    /// assert_eq!(first_char, Some('H'));
+    /// ```
+    fn parse_as_ref(&self, input: &mut Input) -> Self::Output;
+}
+
+impl<F, Input, Output> IterativeParser<Input> for F
+where
+    F: FnOnce(&mut Input) -> Output,
+    Input: Stream,
+    Output: Response,
+{
+    type Output = Output;
+
+    fn parse_once(self, input: &mut Input) -> Self::Output {
         self(input)
     }
 }
 
-impl<Out: Response, Str: Stream, T> Parser for (T, fn(&T, &mut Str) -> Out) {
-    type Input = Str;
-    type Output = Out;
-
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        (self.1)(&self.0, input)
-    }
-}
-
-impl<Par: Parser> Parser for fn() -> Par {
-    type Input = Par::Input;
-    type Output = Par::Output;
-
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        self().parse_stream(input)
-    }
-}
-
-pub trait Parse {
-    type Input: Stream;
-    type Output: ValueFunctor<Value = Self>;
-
-    fn parse(input: &mut Self::Input) -> Self::Output;
-}
-
-// TODO: highly experimental
-/*impl<T> Parse for Option<T>
+impl<F, Input, Output> IterativeParserMut<Input> for F
 where
-    T: Parse,
-    T::Output: Optionable<Output = Sure<Option<T>>>,
+    F: FnMut(&mut Input) -> Output + IterativeParser<Input, Output = Output>,
+    Input: Stream,
+    Output: Response,
 {
-    type Input = T::Input;
+    fn parse_as_mut(&mut self, input: &mut Input) -> Self::Output {
+        self(input)
+    }
+}
+
+impl<F, Input, Output> IterativeParserRef<Input> for F
+where
+    F: Fn(&mut Input) -> Output + IterativeParserMut<Input, Output = Output>,
+    Input: Stream,
+    Output: Response,
+{
+    fn parse_as_ref(&self, input: &mut Input) -> Self::Output {
+        self(input)
+    }
+}
+
+pub trait Parse<Input>
+where
+    Input: Stream,
+{
+    type Output: ValueResponse<Value = Self>;
+
+    fn parse(input: &mut Input) -> Self::Output;
+}
+
+impl<Input, T> Parse<Input> for Option<T>
+where
+    Input: Stream,
+    T: Parse<Input>,
+    T::Output: Fallible<Optional = Sure<Option<T>>>,
+{
     type Output = Sure<Self>;
 
-    fn parse(input: &mut Self::Input) -> Self::Output {
-        T::parse(input).opt_response()
+    fn parse(input: &mut Input) -> Self::Output {
+        T::parse.opt().parse_once(input)
     }
 }
 
 #[cfg(feature = "either")]
-impl<L, R> Parse for either::Either<L, R>
+impl<Input, L, R> Parse<Input> for either::Either<L, R>
 where
-    L: Parse,
-    R: Parse<Input = L::Input, Output = L::Output>,
-    L::Input: Stream,
-    L::Output: Switchable<L::Output, Output = Sure<either::Either<L, R>>>,
+    Input: Stream,
+    L: Parse<Input>,
+    R: Parse<Input, Output = L::Output>,
+    L::Output: Switch<R::Output>,
+
+    val![L<either::Either<val![L], val![R]>>]:
+        Switch<val![R<either::Either<val![L], val![R]>>], Output = Sure<either::Either<L, R>>>,
 {
-    type Input = L::Input;
     type Output = Sure<Self>;
 
-    fn parse(input: &mut Self::Input) -> Self::Output {
-        L::parse.or(R::parse).either().parse_stream(input)
+    fn parse(input: &mut Input) -> Self::Output {
+        super::sources::mk::<L, Input>()
+            .or(super::sources::mk::<R, Input>())
+            .either()
+            .parse_once(input)
     }
-}*/
+}
