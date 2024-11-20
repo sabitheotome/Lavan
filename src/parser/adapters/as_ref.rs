@@ -1,33 +1,39 @@
+use crate::input::prelude::*;
 use crate::parser::prelude::*;
 use crate::response::prelude::*;
-use crate::stream::traits::Stream;
 
 /// A parser for taking another parser by reference
 ///
 /// This `struct` is created by the [`Parser::and`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy)]
 pub struct AsRef<'a, Par> {
-    parser: &'a Par,
+    pub(in crate::parser) parser: &'a Par,
 }
 
-impl<'a, Par> AsRef<'a, Par> {
-    pub(crate) fn new(parser: &'a Par) -> Self
-    where
-        Par: Parser,
-    {
-        Self { parser }
-    }
-}
-
-impl<'a, Par> Parser for AsRef<'a, Par>
+#[parser_fn]
+fn as_ref<'a, Par>(self: &AsRef<'a, Par>) -> Par::Output
 where
-    Par: Parser,
+    Par: IterativeParserRef<INPUT>,
 {
-    type Input = Par::Input;
-    type Output = Par::Output;
+    self.parser.parse_as_ref(input)
+}
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        self.parser.parse_stream(input)
-    }
+/// A parser for taking another parser by reference
+///
+/// This `struct` is created by the [`Parser::and`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug)]
+pub struct AsMut<'a, Par> {
+    pub(crate) parser: &'a mut Par,
+}
+
+#[parser_fn]
+fn as_mut<'a, Par>(self: &mut AsMut<'a, Par>) -> Par::Output
+where
+    Par: IterativeParserMut<INPUT>,
+{
+    self.parser.parse_as_mut(input)
 }

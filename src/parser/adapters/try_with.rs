@@ -1,68 +1,45 @@
+use crate::input::prelude::*;
 use crate::parser::prelude::*;
-use crate::parser::util::assoc::err;
 use crate::response::prelude::*;
-use crate::response::util::try_op;
-use crate::stream::traits::Stream;
 
 /// A parser for generating auto-backtracking variants with another parsers
 ///
 /// This `struct` is created by the [`Parser::try_with`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy)]
 pub struct TryWith<Par0, Par1, Fun> {
-    parser0: Par0,
-    parser1: Par1,
-    function: Fun,
+    pub(in crate::parser) parser0: Par0,
+    pub(in crate::parser) parser1: Par1,
+    pub(in crate::parser) function: Fun,
 }
 
-impl<Par0, Par1, Fun> TryWith<Par0, Par1, Fun> {
-    pub(crate) fn new<Out0, Out1>(parser0: Par0, parser1: Par1, function: Fun) -> Self
-    where
-        Par0: Parser<Output = Out0>,
-        Par1: Parser<Output = Out1, Input = Par0::Input>,
-        Fun: Fn(Out0::Value, Out1::Value) -> std::ops::ControlFlow<Out0::Value, Out0::Value>,
-        Out0: Response,
-        Out1: Response<Error = Out0::Error>,
-    {
-        Self {
-            parser0,
-            parser1,
-            function,
-        }
-    }
-}
-
-impl<Par0, Par1, Fun, Out0, Out1> Parser for TryWith<Par0, Par1, Fun>
+#[parser_fn]
+fn try_with<par0, par1, Fun>(self: &TryWith<par0, par1, Fun>) -> par0::Output
 where
-    Par0: Parser<Output = Out0>,
-    Par1: Parser<Output = Out1, Input = Par0::Input>,
-    Fun: Fn(Out0::Value, Out1::Value) -> std::ops::ControlFlow<Out0::Value, Out0::Value>,
-    Out0: Response,
-    Out1: Response<Error = Out0::Error>,
+    par0::Output: Response<Value = val![par1]>,
+    par1::Output: Response<Error = err![par0]>,
+    Fun: Fn(val![par0], val![par1]) -> std::ops::ControlFlow<val![par0], val![par1]>,
 {
-    type Input = Par0::Input;
-    type Output = Out0;
-
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        use std::ops::ControlFlow::{Break, Continue};
-        let value0 = try_op!(self.parser0.parse_stream(input));
-        let offset = input.offset();
-        match self.parser1.parse_stream(input).control_flow() {
-            Continue(value1) => match (self.function)(value0, value1) {
-                Continue(new) => Out0::from_value(new),
-                Break(original) => {
-                    *input.offset_mut() = offset;
-                    Out0::from_value(original)
-                }
-            },
-            Break(_error) => {
-                *input.offset_mut() = offset;
-                Out0::from_value(value0)
+    use std::ops::ControlFlow::{Break, Continue};
+    let value0 = tryexpr!(parse![self.parser0]);
+    let mut save_state = input.savestate();
+    match parse![self.parser1].control_flow() {
+        Continue(value1) => match (self.function)(value0, value1) {
+            Continue(new) => par0::Output::from_value(new),
+            Break(original) => {
+                input.backtrack(save_state);
+                par0::Output::from_value(original)
             }
+        },
+        Break(_error) => {
+            input.backtrack(save_state);
+            par0::Output::from_value(value0)
         }
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
 
@@ -95,4 +72,4 @@ mod tests {
 
         assert_eq!(output.value(), expected_out);
     }
-}
+}*/

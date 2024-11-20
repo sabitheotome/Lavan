@@ -1,39 +1,97 @@
+use crate::input::prelude::*;
 use crate::parser::prelude::*;
 use crate::response::prelude::*;
-use crate::stream::traits::Stream;
 
 // TODO: Documentation
-pub type FnMap<Par, Val0, Val1> = Map<Par, fn(Val0) -> Val1>;
+pub type SelFn<Par, Val0, Val1> = Sel<Par, fn(Val0) -> Val1>;
+
+// TODO: Documentation
+pub type SelErrFn<Par, Val0, Val1> = SelErr<Par, fn(Val0) -> Val1>;
 
 /// A parser for mapping the [`Response::Value`] through [`Mappable`]
 ///
 /// This `struct` is created by the [`Parser::map`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy)]
 pub struct Map<Par, Fun> {
-    parser: Par,
-    function: Fun,
+    pub(in crate::parser) parser: Par,
+    pub(in crate::parser) function: Fun,
 }
 
-impl<Par, Fun> Map<Par, Fun> {
-    pub(crate) fn new(parser: Par, function: Fun) -> Self
-    where
-        Par: Parser,
-        Par::Output: Mappable<Fun>,
-    {
-        Map { parser, function }
-    }
+/// A parser for mapping the [`Response::Value`] through [`Mappable`]
+///
+/// This `struct` is created by the [`Parser::map`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy)]
+pub struct MapErr<Par, Fun> {
+    pub(in crate::parser) parser: Par,
+    pub(in crate::parser) function: Fun,
 }
 
-impl<Par, Fun> Parser for Map<Par, Fun>
+/// A parser for mapping the [`Response::Value`] through [`Mappable`]
+///
+/// This `struct` is created by the [`Parser::map`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy)]
+pub struct Sel<Par, Fun> {
+    pub(in crate::parser) parser: Par,
+    pub(in crate::parser) function: Fun,
+}
+
+/// A parser for mapping the [`Response::Error`] through [`ErrMappable`]
+///
+/// This `struct` is created by the [`Parser::map_err`] method on [`Parser`].
+/// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy)]
+pub struct SelErr<Par, Fun> {
+    pub(in crate::parser) parser: Par,
+    pub(in crate::parser) function: Fun,
+}
+
+#[parser_fn]
+fn map<par, Fun, Val>(self: &Map<par, Fun>) -> val![par<Val>]
 where
-    Par: Parser,
-    Par::Output: Mappable<Fun>,
+    for<'once> Fun: FnOnce(val![par]) -> Val,
+    for<'mut> Fun: FnMut(val![par]) -> Val,
+    for<'const> Fun: Fn(val![par]) -> Val,
 {
-    type Input = Par::Input;
-    type Output = <Par::Output as Mappable<Fun>>::Output;
+    parse![self.parser].map(when! {
+        move => self.function,
+        mut => &mut self.function,
+        const => &self.function,
+    })
+}
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        self.parser.parse_stream(input).map_response(&self.function)
-    }
+#[parser_fn]
+fn map_err<par, Fun, Err>(self: &MapErr<par, Fun>) -> err![par<Err>]
+where
+    for<'once> Fun: FnOnce(err![par]) -> Err,
+    for<'mut> Fun: FnMut(err![par]) -> Err,
+    for<'const> Fun: Fn(err![par]) -> Err,
+{
+    parse![self.parser].map_err(when! {
+        move => self.function,
+        mut => &mut self.function,
+        const => &self.function,
+    })
+}
+
+#[parser_fn]
+fn sel<par, Fun>(self: &Sel<par, Fun>) -> <par::Output as Select<Fun>>::Output
+where
+    par::Output: Select<Fun>,
+{
+    parse![self.parser].sel(&self.function)
+}
+
+#[parser_fn]
+fn sel_err<par, Fun>(self: &SelErr<par, Fun>) -> <par::Output as SelectErr<Fun>>::Output
+where
+    par::Output: SelectErr<Fun>,
+{
+    parse![self.parser].sel_err(&self.function)
 }

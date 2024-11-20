@@ -1,45 +1,25 @@
+use crate::input::prelude::*;
 use crate::parser::prelude::*;
 use crate::response::prelude::*;
-use crate::stream::traits::Stream;
 
 /// A parser for attaching the span of offsets to the reponse
 ///
 /// This `struct` is created by the [`Parser::spanned`] method on [`Parser`].
 /// See its documentation for more.
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy)]
 pub struct Spanned<Par> {
-    parser: Par,
+    pub(in crate::parser) parser: Par,
 }
 
-impl<Par> Spanned<Par> {
-    pub(crate) fn new(parser: Par) -> Self
-    where
-        Par: Parser,
-        Par::Output: ValueFunctor,
-    {
-        Self { parser }
-    }
-}
-
-impl<Par, Val> Parser for Spanned<Par>
+#[parser_fn]
+fn spanned<par, Val>(
+    self: &Spanned<par>,
+) -> <par::Output as Response>::WithVal<(Val, <INPUT as StreamSpan>::Span)>
 where
-    Par: Parser,
-    Par::Output: ValueFunctor<Value = Val>,
+    INPUT: StreamSpan,
+    par::Output: ValueResponse<Value = Val>,
 {
-    type Input = Par::Input;
-    type Output = <Par::Output as Response>::WithVal<(
-        Val,
-        (
-            <Self::Input as Stream>::Offset,
-            <Self::Input as Stream>::Offset,
-        ),
-    )>;
-
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        let start = input.offset();
-        self.parser.parse_stream(input).map(|value| {
-            let end = input.offset();
-            let span = (start, end);
-            (value, span)
-        })
-    }
+    let start = input.span_offset();
+    parse![self.parser].map(|value| (value, input.span_since(start)))
 }

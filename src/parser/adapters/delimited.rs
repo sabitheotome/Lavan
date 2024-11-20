@@ -1,52 +1,47 @@
+use std::marker::PhantomData;
+
+use crate::input::prelude::*;
 use crate::parser::prelude::*;
 use crate::parser::sources::any_eq;
 use crate::response::prelude::*;
-use crate::stream::traits::Stream;
+
+use super::del::Del;
 
 /// A util parser for expecting opening and closing delimiters around
 ///
 /// This `struct` is created by the [`Parser::delimited`] method on [`Parser`].
 /// See its documentation for more.
-pub struct Delimited<Par, Del> {
-    parser: Par,
-    open: Del,
-    close: Del,
+#[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy)]
+pub struct Delimited<Par, Del0, Del1> {
+    pub(in crate::parser) parser: Par,
+    pub(in crate::parser) open: Del0,
+    pub(in crate::parser) close: Del1,
 }
 
-impl<Par, Del> Delimited<Par, Del> {
-    pub(crate) fn new<First, Second>(parser: Par, open: Del, close: Del) -> Self
-    where
-        Par: Parser,
-        Par::Input: Stream<Token = Del>,
-        Del: PartialEq,
-        Option<Del>: Combinable<Par::Output, Output = First>,
-        First: Combinable<Option<Del>, Output = Second>,
-        Second: Response,
-    {
-        Self {
-            parser,
-            open,
-            close,
-        }
-    }
-}
-
-impl<Par, Del, First, Second> Parser for Delimited<Par, Del>
+#[parser_fn]
+fn delimited<par, del0, del1, Combo>(self: &Delimited<par, del0, del1>) -> Combo::Output
 where
-    Par: Parser,
-    Par::Input: Stream<Token = Del>,
-    Del: PartialEq,
-    Option<Del>: Combinable<Par::Output, Output = First>,
-    First: Combinable<Option<Del>, Output = Second>,
-    Second: Response,
+    del0::Output: Combine<par::Output, Output = Combo>,
+    Combo: Combine<del1::Output, Output: Response>,
 {
-    type Input = Par::Input;
-    type Output = Second;
+    let open = parser![self.open];
+    let middle = parser![self.parser];
+    let close = parser![self.close];
 
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        crate::parser::sources::any_if(|e| *e == self.open)
-            .and(self.parser.as_ref())
-            .and(crate::parser::sources::any_if(|e| *e == self.open))
-            .parse_stream(input)
+    parse![open.and(middle).and(close)]
+}
+
+impl<Par, Del0, Del1> Delimited<Par, Del0, Del1> {
+    pub fn del_delims<Input>(self) -> Delimited<Par, Del<Del0>, Del<Del1>>
+    where
+        Del0: IterativeParser<Input, Output: ValueResponse>,
+        Del1: IterativeParser<Input, Output: ValueResponse>,
+    {
+        Delimited {
+            parser: self.parser,
+            open: self.open.del(),
+            close: self.close.del(),
+        }
     }
 }

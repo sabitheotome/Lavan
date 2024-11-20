@@ -1,41 +1,19 @@
+use crate::input::prelude::*;
 use crate::parser::prelude::*;
 use crate::response::prelude::*;
-use crate::stream::traits::Stream;
 
 /// A parser that automatically backtracks on fail through [`Recoverable`]
 ///
 /// This `struct` is created by the [`Parser::auto_bt`] method on [`Parser`].
 /// See its documentation for more.
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
+#[derive(Debug, Clone, Copy)]
 pub struct AutoBt<Par> {
-    parser: Par,
+    pub(in crate::parser) parser: Par,
 }
 
-impl<Par> AutoBt<Par> {
-    pub(crate) fn new(parser: Par) -> Self
-    where
-        Par: Parser,
-        Par::Output: Recoverable,
-    {
-        Self { parser }
-    }
-}
-
-impl<Par> Parser for AutoBt<Par>
-where
-    Par: Parser,
-    Par::Output: Recoverable,
-{
-    type Input = Par::Input;
-    type Output = Par::Output;
-
-    fn parse_stream(&self, input: &mut Self::Input) -> Self::Output {
-        let offset = input.offset();
-        self.parser.parse_stream(input).recover_response(
-            |input| {
-                *input.offset_mut() = offset;
-            },
-            input,
-        )
-    }
+#[parser_fn]
+fn auto_bt<par>(self: &AutoBt<par>) -> par::Output {
+    let mut rewind_state = input.savestate();
+    parse![self.parser].on_err(|| input.backtrack(rewind_state))
 }
