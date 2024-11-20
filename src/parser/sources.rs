@@ -251,6 +251,7 @@ pub mod adapters {
     /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
     /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
+    #[derive(Debug, Clone)]
     pub struct Recursive<Par: ?Sized> {
         pub(crate) parser: std::rc::Rc<Par>,
     }
@@ -260,6 +261,7 @@ pub mod adapters {
     /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
     /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
+    #[derive(Debug, Clone)]
     pub struct Weak<Par: ?Sized> {
         pub(crate) parser: std::rc::Weak<Par>,
     }
