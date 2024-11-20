@@ -1,14 +1,36 @@
-use crate::stream::traits::Stream;
-use std::ops::ControlFlow;
+use crate::response::prelude::*;
 
 pub trait Response {
     type Value;
     type Error;
-    type WithVal<Val>: Response;
-    type WithErr<Err>: Response;
+    type Residual: FromErr<Self::Error> + IntoErr<Self::Error>;
+    type WithVal<Val>: Response<Error = Self::Error>;
+    type WithErr<Err>: Response<Value = Self::Value>;
 
     fn from_value(collector: Self::Value) -> Self;
     fn from_error(error: Self::Error) -> Self;
+
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value>
+    where
+        Self: Sized;
+
+    fn from_residual<R>(residual: R) -> Self
+    where
+        Self: Sized,
+        R: IntoErr<Self::Error>,
+    {
+        Self::from_error(residual.into_err())
+    }
+
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Value>
+    where
+        Self: Sized,
+    {
+        match self.control_flow() {
+            ControlFlow::Continue(val) => ControlFlow::Continue(val),
+            ControlFlow::Break(err) => ControlFlow::Break(Self::Residual::from_err(err)),
+        }
+    }
 
     fn map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
     where
@@ -22,131 +44,151 @@ pub trait Response {
     where
         Fun: FnOnce(Self::Value) -> Self::WithVal<Val>;
 
-    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value>;
+    fn on_ok<F>(self, f: F) -> Self
+    where
+        Self: Sized,
+        F: FnOnce(),
+    {
+        match self.control_flow() {
+            ControlFlow::Continue(ok) => {
+                f();
+                Self::from_value(ok)
+            }
+            ControlFlow::Break(err) => Self::from_error(err),
+        }
+    }
+
+    fn on_err<F>(self, f: F) -> Self
+    where
+        Self: Sized,
+        F: FnOnce(),
+    {
+        match self.control_flow() {
+            ControlFlow::Continue(ok) => Self::from_value(ok),
+            ControlFlow::Break(err) => {
+                f();
+                Self::from_error(err)
+            }
+        }
+    }
 }
 
-pub trait ValueFunctor: Response {
+pub trait FromErr<O> {
+    fn from_err(v: O) -> Self;
+}
+
+pub trait IntoErr<O> {
+    fn into_err(self) -> O;
+}
+
+pub trait ValueResponse: Response //where Self::WithVal<Self::Value>: Response<Value = Self::Value>,
+{
+    type VoidVal: Attach;
+
+    fn void_val(self) -> Self::VoidVal;
+
     fn unwrap(self) -> Self::Value
     where
         Self::Error: std::fmt::Debug;
 }
 
-pub trait ErrorFunctor: Response {
+pub trait ErrorResponse: Response //where Self::WithErr<Self::Error>: Response<Error = Self::Error>,
+{
+    type VoidErr: AttachErr;
+
+    fn void_err(self) -> Self::VoidErr;
+
     fn unwrap_err(self) -> Self::Error
     where
         Self::Value: std::fmt::Debug;
 }
 
-pub trait Combinable<Res>: Response
-where
-    Res: Response,
-{
-    type Output: Response;
-
-    fn combine_response<Fun>(self, response: Fun) -> Self::Output
-    where
-        Fun: FnOnce() -> Res;
-}
-
-// TODO: Planned to possibly be removed
-pub trait Switchable<Res>: Response
-where
-    Res: Response,
-{
-    type Output: Response;
-
-    fn disjoin_response<Fun, Rec, Str>(
-        self,
-        response: Fun,
-        recover: Rec,
-        stream: &mut Str,
-    ) -> Self::Output
-    where
-        Fun: FnOnce(&mut Str) -> Res,
-        Rec: FnOnce(&mut Str),
-        Str: Stream;
-}
-
-// TODO: Planned to possibly be removed
-pub trait Recoverable: Response {
-    fn recover_response<Rec, Str>(self, on_residual: Rec, stream: &mut Str) -> Self
-    where
-        Rec: FnOnce(&mut Str),
-        Str: Stream;
-}
-
-pub trait Attachable: Response {
-    type Output<V>: Ignorable;
+pub trait Attach: Response {
+    type Output<V>: ValueResponse;
     fn attach_to_response<V>(self, value: impl FnOnce() -> V) -> Self::Output<V>;
 }
 
-pub trait Ignorable: Response {
-    type Output: Attachable;
-    fn ignore_response(self) -> Self::Output;
+pub trait AttachErr: Response {
+    type Output<E>: ErrorResponse;
+    fn attach_err_to_response<E>(self, value: impl FnOnce() -> E) -> Self::Output<E>;
 }
 
-pub trait Mappable<Fun>: Response {
+pub trait Select<Fun>: Response {
     type Output: Response;
-    fn map_response(self, f: &Fun) -> Self::Output;
+    fn sel(self, f: &Fun) -> Self::Output;
 }
 
-impl<Fun, Val0, Val1, T> Mappable<Fun> for T
+impl<Fun, Val0, Val1, T> Select<Fun> for T
 where
     Fun: Fn(Val0) -> Val1,
-    T: ValueFunctor<Value = Val0>,
+    T: ValueResponse<Value = Val0>,
 {
     type Output = T::WithVal<Val1>;
 
-    fn map_response(self, f: &Fun) -> Self::Output {
+    fn sel(self, f: &Fun) -> Self::Output {
         self.map(f)
     }
 }
 
-pub trait ErrMappable<Fun>: Response {
+pub trait SelectErr<Fun>: Response {
     type Output: Response;
-    fn err_map_response(self, f: &Fun) -> Self::Output;
+    fn sel_err(self, f: &Fun) -> Self::Output;
 }
 
-impl<Fun, Err0, Err1, T> ErrMappable<Fun> for T
+impl<Fun, Err0, Err1, T> SelectErr<Fun> for T
 where
     Fun: Fn(Err0) -> Err1,
-    T: ErrorFunctor<Error = Err0>,
+    T: ErrorResponse<Error = Err0>,
 {
     type Output = T::WithErr<Err1>;
 
-    fn err_map_response(self, f: &Fun) -> Self::Output {
+    fn sel_err(self, f: &Fun) -> Self::Output {
         self.map_err(f)
     }
 }
 
-// TODO: Merge [`Optionable`] into [`Fallible`]
-pub trait Optionable: Recoverable {
-    type Output: Response;
-    fn opt_response(self) -> Self::Output;
-}
-
 pub trait Fallible: Response {
     type Infallible: Response<Value = Self::Value>;
+    type Optional: Response;
+
+    fn optional(self) -> Self::Optional
+    where
+        Self: Sized;
 }
 
-pub trait Filterable: ValueFunctor {
+pub trait Predict: ValueResponse {
     type Output: Fallible;
 
-    fn filter_response(self, predicate: impl FnOnce(&Self::Value) -> bool) -> Self::Output;
+    fn predict(self, predicate: impl FnOnce(&Self::Value) -> bool) -> Self::Output;
 }
 
-// TODO: Possibly planned to be renamed
-pub trait FilterableWithErr<Err>: ValueFunctor {
+pub trait PredictOrElse<Err>: ValueResponse {
     type Output: Fallible<Error = Err>;
 
-    fn filter_response_or_else(
+    fn predict_or_else(
         self,
         predicate: impl FnOnce(&Self::Value) -> bool,
         error: impl FnOnce() -> Err,
     ) -> Self::Output;
 }
 
-pub trait Bindable<Fun> {
+pub trait Apply<F> {
     type Output: Response;
-    fn bind(self, f: &Fun) -> Self::Output;
+    fn apply(self, f: &F) -> Self::Output;
+}
+
+pub trait Combine<Res> {
+    type Output: Response;
+
+    fn combine<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Res;
+}
+
+pub trait Switch<Other> {
+    type Output: Response;
+
+    fn switch<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Other;
 }
