@@ -21,6 +21,13 @@ impl<E> Unsure<E> {
     {
         self.into_result().unwrap();
     }
+
+    pub fn unwrap_err(self) -> E
+    where
+        E: std::fmt::Debug,
+    {
+        self.into_result().unwrap_err()
+    }
 }
 
 impl<E> From<Result<(), E>> for Unsure<E> {
@@ -35,9 +42,25 @@ impl<E> From<Unsure<E>> for Result<(), E> {
     }
 }
 
+impl<E> From<Option<E>> for Unsure<E> {
+    fn from(value: Option<E>) -> Self {
+        match value {
+            Some(err) => Unsure::err(err),
+            None => Unsure::ok(),
+        }
+    }
+}
+
+impl<E> From<Unsure<E>> for Option<E> {
+    fn from(value: Unsure<E>) -> Self {
+        value.0.err()
+    }
+}
+
 impl<T> Response for Unsure<T> {
     type Value = ();
     type Error = T;
+    type Residual = Exception<T>;
     type WithVal<Val> = Unsure<T>;
     type WithErr<Err> = Unsure<Err>;
 
@@ -47,6 +70,10 @@ impl<T> Response for Unsure<T> {
 
     fn from_error(error: Self::Error) -> Self {
         Unsure::err(error)
+    }
+
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        self.into_result().control_flow()
     }
 
     fn map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
@@ -73,13 +100,15 @@ impl<T> Response for Unsure<T> {
     {
         f(())
     }
-
-    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
-        self.into_result().control_flow()
-    }
 }
 
-impl<Err> ErrorFunctor for Unsure<Err> {
+impl<Err> ErrorResponse for Unsure<Err> {
+    type VoidErr = bool;
+
+    fn void_err(self) -> Self::VoidErr {
+        self.into_result().is_ok()
+    }
+
     fn unwrap_err(self) -> Self::Error
     where
         Self::Value: std::fmt::Debug,
@@ -88,96 +117,18 @@ impl<Err> ErrorFunctor for Unsure<Err> {
     }
 }
 
-impl<Fun, Val, Err> Mappable<Fun> for Unsure<Err>
+impl<Fun, Val, Err> Select<Fun> for Unsure<Err>
 where
     Fun: Fn() -> Val,
 {
     type Output = Result<Val, Err>;
 
-    fn map_response(self, f: &Fun) -> Self::Output {
+    fn sel(self, f: &Fun) -> Self::Output {
         self.into_result().map(|()| f())
     }
 }
 
-impl<Err> Combinable<()> for Unsure<Err> {
-    type Output = Self;
-
-    fn combine_response<Fun>(self, response: Fun) -> Self::Output
-    where
-        Fun: FnOnce(),
-    {
-        match self.into_result() {
-            Ok(()) => {
-                response();
-                Unsure::ok()
-            }
-            Err(error) => Unsure::err(error),
-        }
-    }
-}
-
-impl<Err, Val> Combinable<Sure<Val>> for Unsure<Err> {
-    type Output = Result<Val, Err>;
-
-    fn combine_response<Fun>(self, response: Fun) -> Self::Output
-    where
-        Fun: FnOnce() -> Sure<Val>,
-    {
-        self.into_result()?;
-        Ok(response().value())
-    }
-}
-
-impl<Err> Combinable<Unsure<Err>> for Unsure<Err> {
-    type Output = Self;
-
-    fn combine_response<Fun>(self, response: Fun) -> Self::Output
-    where
-        Fun: FnOnce() -> Unsure<Err>,
-    {
-        match self.into_result() {
-            Ok(()) => response(),
-            Err(error) => Self::err(error),
-        }
-    }
-}
-
-impl<Err, Val> Combinable<Result<Val, Err>> for Unsure<Err> {
-    type Output = Result<Val, Err>;
-
-    fn combine_response<Fun>(self, response: Fun) -> Self::Output
-    where
-        Fun: FnOnce() -> Result<Val, Err>,
-    {
-        self.into_result()?;
-        response()
-    }
-}
-
-impl<Err> Switchable<Unsure<Err>> for Unsure<Err> {
-    type Output = Unsure<(Err, Err)>;
-
-    fn disjoin_response<Fun, Rec, Str>(
-        self,
-        response: Fun,
-        recover: Rec,
-        stream: &mut Str,
-    ) -> Self::Output
-    where
-        Fun: FnOnce(&mut Str) -> Unsure<Err>,
-        Rec: FnOnce(&mut Str),
-    {
-        match self.into_result() {
-            Ok(()) => Unsure::ok(),
-            Err(error0) => {
-                recover(stream);
-                response(stream).map_err(|error1| (error0, error1))
-            }
-        }
-    }
-}
-
-impl<Err> Attachable for Unsure<Err> {
+impl<Err> Attach for Unsure<Err> {
     type Output<V> = Result<V, Err>;
 
     fn attach_to_response<V>(self, value: impl FnOnce() -> V) -> Self::Output<V> {
@@ -185,41 +136,165 @@ impl<Err> Attachable for Unsure<Err> {
     }
 }
 
-impl<Err> Recoverable for Unsure<Err> {
-    fn recover_response<Rec, Str>(self, on_residual: Rec, stream: &mut Str) -> Self
+impl<Err> Fallible for Unsure<Err> {
+    type Infallible = ();
+    type Optional = Sure<bool>;
+
+    fn optional(self) -> Self::Optional {
+        Sure(self.into_result().is_ok())
+    }
+}
+
+impl<Err, Fun, Out> Apply<Fun> for Unsure<Err>
+where
+    Result<(), Err>: Combine<Out>,
+    Fun: Fn() -> Out,
+    Out: Response,
+{
+    type Output = <Result<(), Err> as Combine<Out>>::Output;
+
+    fn apply(self, f: &Fun) -> Self::Output {
+        self.into_result().combine(|| f())
+    }
+}
+
+impl<Err> Combine<()> for Unsure<Err> {
+    type Output = Self;
+
+    fn combine<F>(self, f: F) -> Self::Output
     where
-        Rec: FnOnce(&mut Str),
+        F: FnOnce(),
     {
         match self.into_result() {
-            Ok(()) => Unsure::ok(),
-            Err(error) => {
-                on_residual(stream);
-                Unsure::err(error)
+            Ok(()) => {
+                f();
+                Unsure::ok()
+            }
+            Err(error) => Unsure::err(error),
+        }
+    }
+}
+
+impl<Err, Val> Combine<Sure<Val>> for Unsure<Err> {
+    type Output = Result<Val, Err>;
+
+    fn combine<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Sure<Val>,
+    {
+        self.into_result()?;
+        Ok(f().value())
+    }
+}
+
+impl<Err> Combine<Unsure<Err>> for Unsure<Err> {
+    type Output = Self;
+
+    fn combine<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Unsure<Err>,
+    {
+        match self.into_result() {
+            Ok(()) => f(),
+            Err(error) => Self::err(error),
+        }
+    }
+}
+
+impl<Err, Val> Combine<Result<Val, Err>> for Unsure<Err> {
+    type Output = Result<Val, Err>;
+
+    fn combine<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Result<Val, Err>,
+    {
+        self.into_result()?;
+        f()
+    }
+}
+
+impl<Err> Switch<()> for Unsure<Err> {
+    type Output = ();
+
+    fn switch<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> (),
+    {
+        match self.into_result() {
+            Ok(()) => {}
+            Err(_error) => {
+                f();
             }
         }
     }
 }
 
-impl<Err> Optionable for Unsure<Err> {
-    type Output = ();
+impl<Err> Switch<bool> for Unsure<Err> {
+    type Output = Unsure<Err>;
 
-    fn opt_response(self) -> Self::Output {
-        let _ = self;
+    fn switch<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> bool,
+    {
+        match self.into_result() {
+            Ok(()) => Unsure::ok(),
+            Err(error) => f().then_some(()).ok_or(error).into(),
+        }
     }
 }
 
-impl<Err> Fallible for Unsure<Err> {
-    type Infallible = ();
+impl<Val, Err> Switch<Option<Val>> for Unsure<Err> {
+    type Output = Result<Option<Val>, Err>;
+
+    fn switch<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Option<Val>,
+    {
+        match self.into_result() {
+            Ok(()) => Ok(None),
+            Err(error) => f().map(Some).ok_or(error),
+        }
+    }
 }
 
-impl<Err, Fun, Out> Bindable<Fun> for Unsure<Err>
-where
-    Result<(), Err>: Combinable<Out>,
-    Fun: Fn() -> Out,
-    Out: Response,
-{
-    type Output = <Result<(), Err> as Combinable<Out>>::Output;
-    fn bind(self, f: &Fun) -> Self::Output {
-        self.into_result().combine_response(|| f())
+impl<Val, Err> Switch<Sure<Val>> for Unsure<Err> {
+    type Output = Sure<Option<Val>>;
+
+    fn switch<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Sure<Val>,
+    {
+        match self.into_result() {
+            Ok(()) => Sure(None),
+            Err(_error) => f().map(Some),
+        }
+    }
+}
+
+impl<Val, Err0, Err1> Switch<Result<Val, Err1>> for Unsure<Err0> {
+    type Output = Result<Option<Val>, (Err0, Err1)>;
+
+    fn switch<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Result<Val, Err1>,
+    {
+        match self.into_result() {
+            Ok(()) => Ok(None),
+            Err(error0) => f().map(Some).map_err(|error1| (error0, error1)),
+        }
+    }
+}
+
+impl<Err0, Err1> Switch<Unsure<Err1>> for Unsure<Err0> {
+    type Output = Unsure<(Err0, Err1)>;
+
+    fn switch<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Unsure<Err1>,
+    {
+        match self.into_result() {
+            Ok(()) => Unsure::ok(),
+            Err(error0) => f().map_err(|error1| (error0, error1)),
+        }
     }
 }

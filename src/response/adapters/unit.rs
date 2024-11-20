@@ -3,6 +3,7 @@ use crate::response::prelude::*;
 impl Response for () {
     type Value = ();
     type Error = Infallible;
+    type Residual = Infallible;
     type WithVal<Val> = ();
     type WithErr<Err> = ();
 
@@ -10,6 +11,10 @@ impl Response for () {
 
     fn from_error(_: Self::Error) -> Self {
         unreachable!()
+    }
+
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        ControlFlow::Continue(())
     }
 
     fn map<Fun, Val>(self, f: Fun) -> Self::WithVal<Val>
@@ -31,38 +36,20 @@ impl Response for () {
     {
         f(());
     }
-
-    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
-        ControlFlow::Continue(())
-    }
 }
 
-impl<Fun, Val> Mappable<Fun> for ()
+impl<Fun, Val> Select<Fun> for ()
 where
     Fun: Fn() -> Val,
 {
     type Output = Sure<Val>;
 
-    fn map_response(self, f: &Fun) -> Self::Output {
+    fn sel(self, f: &Fun) -> Self::Output {
         Sure(f())
     }
 }
 
-impl<Res> Combinable<Res> for ()
-where
-    Res: Response,
-{
-    type Output = Res;
-
-    fn combine_response<Fun>(self, response: Fun) -> Self::Output
-    where
-        Fun: FnOnce() -> Res,
-    {
-        response()
-    }
-}
-
-impl Attachable for () {
+impl Attach for () {
     type Output<V> = Sure<V>;
 
     fn attach_to_response<V>(self, value: impl FnOnce() -> V) -> Self::Output<V> {
@@ -70,13 +57,40 @@ impl Attachable for () {
     }
 }
 
-impl<Fun, Out> Bindable<Fun> for ()
+impl<Fun, Out> Apply<Fun> for ()
 where
     Fun: Fn() -> Out,
     Out: Response,
 {
     type Output = Out;
-    fn bind(self, f: &Fun) -> Self::Output {
+    fn apply(self, f: &Fun) -> Self::Output {
         f()
+    }
+}
+
+impl<Res> Combine<Res> for ()
+where
+    Res: Response,
+{
+    type Output = Res;
+
+    fn combine<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Res,
+    {
+        f()
+    }
+}
+
+impl<O> IntoErr<O> for Infallible {
+    fn into_err(self) -> O {
+        match self {}
+    }
+}
+
+impl<O> FromErr<O> for Infallible {
+    fn from_err(v: O) -> Self {
+        let _ = v;
+        unreachable!()
     }
 }

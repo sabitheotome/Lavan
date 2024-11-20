@@ -2,8 +2,9 @@ use crate::response::prelude::*;
 
 impl<T, E> Response for Result<T, E> {
     type Value = T;
-    type WithVal<Val> = Result<Val, E>;
     type Error = E;
+    type Residual = Exception<E>;
+    type WithVal<Val> = Result<Val, E>;
     type WithErr<Err> = Result<T, Err>;
 
     fn from_value(value: Self::Value) -> Self {
@@ -12,6 +13,13 @@ impl<T, E> Response for Result<T, E> {
 
     fn from_error(error: Self::Error) -> Self {
         Err(error)
+    }
+
+    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
+        match self {
+            Ok(v) => ControlFlow::Continue(v),
+            Err(e) => ControlFlow::Break(e),
+        }
     }
 
     fn map_err<Fun, Err>(self, f: Fun) -> Self::WithErr<Err>
@@ -34,16 +42,15 @@ impl<T, E> Response for Result<T, E> {
     {
         self.and_then(f)
     }
-
-    fn control_flow(self) -> ControlFlow<Self::Error, Self::Value> {
-        match self {
-            Ok(v) => ControlFlow::Continue(v),
-            Err(e) => ControlFlow::Break(e),
-        }
-    }
 }
 
-impl<T, E> ValueFunctor for Result<T, E> {
+impl<T, E> ValueResponse for Result<T, E> {
+    type VoidVal = Unsure<E>;
+
+    fn void_val(self) -> Self::VoidVal {
+        self.map(|_| ()).into()
+    }
+
     fn unwrap(self) -> Self::Value
     where
         Self::Error: std::fmt::Debug,
@@ -52,7 +59,13 @@ impl<T, E> ValueFunctor for Result<T, E> {
     }
 }
 
-impl<T, E> ErrorFunctor for Result<T, E> {
+impl<T, E> ErrorResponse for Result<T, E> {
+    type VoidErr = Option<T>;
+
+    fn void_err(self) -> Self::VoidErr {
+        self.ok()
+    }
+
     fn unwrap_err(self) -> Self::Error
     where
         Self::Value: std::fmt::Debug,
@@ -61,145 +74,41 @@ impl<T, E> ErrorFunctor for Result<T, E> {
     }
 }
 
-impl<Val, Err> Combinable<()> for Result<Val, Err> {
-    type Output = Self;
+impl<Val, Err> Fallible for Result<Val, Err> {
+    type Infallible = Sure<Self::Value>;
+    type Optional = Sure<Option<Val>>;
 
-    fn combine_response<Fun>(self, response: Fun) -> Self::Output
-    where
-        Fun: FnOnce(),
-    {
-        let value = self?;
-        response();
-        Ok(value)
-    }
-}
-
-impl<Val0, Val1, Err0, Err1> Combinable<Result<Val1, Err1>> for Result<Val0, Err0>
-where
-    Err1: From<Err0>,
-{
-    type Output = Result<(Val0, Val1), Err1>;
-
-    fn combine_response<Fun>(self, response: Fun) -> Self::Output
-    where
-        Fun: FnOnce() -> Result<Val1, Err1>,
-    {
-        Ok((self?, response()?))
-    }
-}
-
-impl<Val0, Val1, Err> Combinable<Sure<Val1>> for Result<Val0, Err> {
-    type Output = Result<(Val0, Val1), Err>;
-
-    fn combine_response<Fun>(self, response: Fun) -> Self::Output
-    where
-        Fun: FnOnce() -> Sure<Val1>,
-    {
-        let value = self?;
-        Ok((value, response().value()))
-    }
-}
-
-impl<Val, Err> Combinable<Unsure<Err>> for Result<Val, Err> {
-    type Output = Result<Val, Err>;
-
-    fn combine_response<Fun>(self, response: Fun) -> Self::Output
-    where
-        Fun: FnOnce() -> Unsure<Err>,
-    {
-        let value = self?;
-        response().into_result()?;
-        Ok(value)
-    }
-}
-
-impl<Val, Err0, Err1> Switchable<Result<Val, Err1>> for Result<Val, Err0> {
-    type Output = Result<Val, (Err0, Err1)>;
-
-    fn disjoin_response<Fun, Rec, Str>(
-        self,
-        response: Fun,
-        recover: Rec,
-        stream: &mut Str,
-    ) -> Self::Output
-    where
-        Fun: FnOnce(&mut Str) -> Result<Val, Err1>,
-        Rec: FnOnce(&mut Str),
-    {
-        match self {
-            Ok(value) => Ok(value),
-            Err(error0) => {
-                recover(stream);
-                match response(stream) {
-                    Ok(value) => Ok(value),
-                    Err(error1) => Err((error0, error1)),
-                }
-            }
-        }
-    }
-}
-
-impl<Val, Err> Recoverable for Result<Val, Err> {
-    fn recover_response<Rec, Str>(self, on_residual: Rec, stream: &mut Str) -> Self
-    where
-        Rec: FnOnce(&mut Str),
-    {
-        match self {
-            Ok(value) => Ok(value),
-            Err(error) => {
-                on_residual(stream);
-                Err(error)
-            }
-        }
-    }
-}
-
-impl<Val, Err> Ignorable for Result<Val, Err> {
-    type Output = Unsure<Err>;
-
-    fn ignore_response(self) -> Self::Output {
-        self.map(|_| ()).into()
-    }
-}
-
-impl<Val, Err> Optionable for Result<Val, Err> {
-    type Output = Sure<Option<Val>>;
-
-    fn opt_response(self) -> Self::Output {
+    fn optional(self) -> Self::Optional {
         Sure(self.ok())
     }
 }
 
-impl<Val, Err> Fallible for Result<Val, Err> {
-    type Infallible = Sure<Self::Value>;
-}
-
-impl<Val, Err> FilterableWithErr<Err> for Result<Val, Err> {
+impl<Val, Err> PredictOrElse<Err> for Result<Val, Err> {
     type Output = Result<Val, Err>;
 
-    fn filter_response_or_else(
+    fn predict_or_else(
         self,
-        predicate: impl FnOnce(&Self::Value) -> bool,
-        error: impl FnOnce() -> Err,
+        pred: impl FnOnce(&Self::Value) -> bool,
+        err: impl FnOnce() -> Err,
     ) -> Self::Output {
         match self {
-            Ok(ok) => match predicate(&ok) {
+            Ok(ok) => match pred(&ok) {
                 true => Ok(ok),
-                false => Err(error()),
+                false => Err(err()),
             },
             Err(err) => Err(err),
         }
     }
 }
 
-impl<Val, Err, Fun, Out> Bindable<Fun> for Result<Val, Err>
+impl<Val, Err, Fun, Out> Apply<Fun> for Result<Val, Err>
 where
-    Unsure<Err>: Combinable<Out>,
+    Unsure<Err>: Combine<Out>,
     Fun: Fn(Val) -> Out,
     Out: Response,
 {
-    type Output = <Unsure<Err> as Combinable<Out>>::Output;
-    fn bind(self, f: &Fun) -> Self::Output {
+    type Output = <Unsure<Err> as Combine<Out>>::Output;
+    fn apply(self, f: &Fun) -> Self::Output {
         let option;
         let unsure;
         match self {
@@ -212,6 +121,148 @@ where
                 unsure = Unsure::err(error);
             }
         }
-        unsure.combine_response(|| f(option.unwrap()))
+        unsure.combine(|| f(option.unwrap()))
+    }
+}
+
+impl<Val, Err> Combine<()> for Result<Val, Err> {
+    type Output = Self;
+
+    fn combine<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce(),
+    {
+        let value = self?;
+        f();
+        Ok(value)
+    }
+}
+
+impl<Val0, Val1, Err0, Err1> Combine<Result<Val1, Err1>> for Result<Val0, Err0>
+where
+    Err1: From<Err0>,
+{
+    type Output = Result<(Val0, Val1), Err1>;
+
+    fn combine<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Result<Val1, Err1>,
+    {
+        Ok((self?, f()?))
+    }
+}
+
+impl<Val0, Val1, Err> Combine<Sure<Val1>> for Result<Val0, Err> {
+    type Output = Result<(Val0, Val1), Err>;
+
+    fn combine<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Sure<Val1>,
+    {
+        let value = self?;
+        Ok((value, f().value()))
+    }
+}
+
+impl<Val, Err> Combine<Unsure<Err>> for Result<Val, Err> {
+    type Output = Result<Val, Err>;
+
+    fn combine<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Unsure<Err>,
+    {
+        let value = self?;
+        f().into_result()?;
+        Ok(value)
+    }
+}
+
+impl<Val, Err> Switch<()> for Result<Val, Err> {
+    type Output = Sure<Option<Val>>;
+
+    fn switch<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> (),
+    {
+        match self {
+            Ok(value) => Sure(Some(value)),
+            Err(_error) => {
+                f();
+                Sure(None)
+            }
+        }
+    }
+}
+
+impl<Val, Err> Switch<bool> for Result<Val, Err> {
+    type Output = Result<Option<Val>, Err>;
+
+    fn switch<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> bool,
+    {
+        match self {
+            Ok(value) => Ok(Some(value)),
+            Err(error) => f().then_some(None).ok_or(error),
+        }
+    }
+}
+
+impl<Val, Err> Switch<Option<Val>> for Result<Val, Err> {
+    type Output = Result<Val, Err>;
+
+    fn switch<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Option<Val>,
+    {
+        match self {
+            Ok(value) => Ok(value),
+            Err(error) => f().ok_or(error),
+        }
+    }
+}
+
+impl<Val, Err> Switch<Sure<Val>> for Result<Val, Err> {
+    type Output = Sure<Val>;
+
+    fn switch<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Sure<Val>,
+    {
+        match self {
+            Ok(value) => Sure(value),
+            Err(_error) => f(),
+        }
+    }
+}
+
+impl<Val, Err0, Err1> Switch<Result<Val, Err1>> for Result<Val, Err0> {
+    type Output = Result<Val, (Err0, Err1)>;
+
+    fn switch<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Result<Val, Err1>,
+    {
+        match self {
+            Ok(value) => Ok(value),
+            Err(error0) => f().map_err(|error1| (error0, error1)),
+        }
+    }
+}
+
+impl<Val, Err0, Err1> Switch<Unsure<Err1>> for Result<Val, Err0> {
+    type Output = Result<Option<Val>, (Err0, Err1)>;
+
+    fn switch<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce() -> Unsure<Err1>,
+    {
+        match self {
+            Ok(value) => Ok(Some(value)),
+            Err(error0) => f()
+                .into_result()
+                .map(|()| None)
+                .map_err(|error1| (error0, error1)),
+        }
     }
 }
