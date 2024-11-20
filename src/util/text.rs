@@ -175,62 +175,62 @@ pub mod utf {
 
 pub mod adapters {
     pub mod ascii {
-        /// A parser for expecting the next token to be an **End of File**
+        /// TODO
         ///
-        /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+        /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
         /// See its documentation for more.
         #[must_use = "Parsers are lazy and do nothing unless consumed"]
         #[non_exhaustive]
         #[derive(Debug, Clone, Copy)]
         pub struct AsciiAlphanumeric;
 
-        /// A parser for expecting the next token to be an **End of File**
+        /// TODO
         ///
-        /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+        /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
         /// See its documentation for more.
         #[must_use = "Parsers are lazy and do nothing unless consumed"]
         #[non_exhaustive]
         #[derive(Debug, Clone, Copy)]
         pub struct AsciiAlphabetic;
 
-        /// A parser for expecting the next token to be an **End of File**
+        /// TODO
         ///
-        /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+        /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
         /// See its documentation for more.
         #[must_use = "Parsers are lazy and do nothing unless consumed"]
         #[non_exhaustive]
         #[derive(Debug, Clone, Copy)]
         pub struct AsciiIdent;
 
-        /// A parser for expecting the next token to be an **End of File**
+        /// TODO
         ///
-        /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+        /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
         /// See its documentation for more.
         #[must_use = "Parsers are lazy and do nothing unless consumed"]
         #[non_exhaustive]
         #[derive(Debug, Clone, Copy)]
         pub struct AsciiTrim;
-        /// A parser for expecting the next token to be an **End of File**
+        /// TODO
         ///
-        /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+        /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
         /// See its documentation for more.
         #[must_use = "Parsers are lazy and do nothing unless consumed"]
         #[non_exhaustive]
         #[derive(Debug, Clone, Copy)]
         pub struct HexInt;
 
-        /// A parser for expecting the next token to be an **End of File**
+        /// TODO
         ///
-        /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+        /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
         /// See its documentation for more.
         #[must_use = "Parsers are lazy and do nothing unless consumed"]
         #[non_exhaustive]
         #[derive(Debug, Clone, Copy)]
         pub struct DecInt;
 
-        /// A parser for expecting the next token to be an **End of File**
+        /// TODO
         ///
-        /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+        /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
         /// See its documentation for more.
         #[must_use = "Parsers are lazy and do nothing unless consumed"]
         #[non_exhaustive]
@@ -238,44 +238,44 @@ pub mod adapters {
         pub struct DecFloat;
     }
     pub mod utf {
-        /// A parser for expecting the next token to be an **End of File**
+        /// TODO
         ///
-        /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+        /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
         /// See its documentation for more.
         #[must_use = "Parsers are lazy and do nothing unless consumed"]
         #[non_exhaustive]
         #[derive(Debug, Clone, Copy)]
         pub struct UtfAlphanumeric;
 
-        /// A parser for expecting the next token to be an **End of File**
+        /// TODO
         ///
-        /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+        /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
         /// See its documentation for more.
         #[must_use = "Parsers are lazy and do nothing unless consumed"]
         #[non_exhaustive]
         #[derive(Debug, Clone, Copy)]
         pub struct UtfAlphabetic;
 
-        /// A parser for expecting the next token to be an **End of File**
+        /// TODO
         ///
-        /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+        /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
         /// See its documentation for more.
         #[must_use = "Parsers are lazy and do nothing unless consumed"]
         #[non_exhaustive]
         #[derive(Debug, Clone, Copy)]
         pub struct UtfIdent;
 
-        /// A parser for expecting the next token to be an **End of File**
+        /// TODO
         ///
-        /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+        /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
         /// See its documentation for more.
         #[must_use = "Parsers are lazy and do nothing unless consumed"]
         #[non_exhaustive]
         #[derive(Debug, Clone, Copy)]
         pub struct UtfTrim;
-        /// A parser for expecting the next token to be an **End of File**
+        /// TODO
         ///
-        /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+        /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
         /// See its documentation for more.
         #[must_use = "Parsers are lazy and do nothing unless consumed"]
         #[non_exhaustive]
@@ -283,9 +283,9 @@ pub mod adapters {
         pub struct IntSeq;
     }
 
-    /// A parser for expecting the next token to be an **End of File**
+    /// TODO
     ///
-    /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+    /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
     /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
     #[non_exhaustive]

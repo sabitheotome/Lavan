@@ -96,6 +96,7 @@ pub mod functions {
         src(Supply(v))
     }
 
+    // TODO: Documentation
     pub fn recursive<'a, Out, Par, Fun, I>(f: Fun) -> Src<Recursive<Par>, I>
     where
         I: Stream,
@@ -115,10 +116,11 @@ pub mod functions {
 
 pub mod adapters {
     use super::*;
-    /// A parser for ignoring the [`Response::Value`] through [`Ignorable`]
+
+    /// TODO
     ///
-    /// This `struct` is created by the [`Parser::discard`] method on [`Parser`].
-    /// See its documentation for more.
+    /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
+    /// See its documentation for more.    
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
     #[derive(Debug)]
     pub struct Src<Par, I>(pub(crate) Par, pub(crate) std::marker::PhantomData<I>);
@@ -145,9 +147,9 @@ pub mod adapters {
 
     impl<Par: Copy, I> Copy for Src<Par, I> {}
 
-    /// A parser for expecting the next token to be an **End of File**
+    /// TODO
     ///
-    /// This `struct` is created by the [`eoi`] method on [`sources`](crate::parser::sources).
+    /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
     /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
     #[non_exhaustive]
@@ -180,9 +182,9 @@ pub mod adapters {
     #[derive(Debug, Clone, Copy)]
     pub struct AnyIf<Fun>(pub(crate) Fun);
 
-    /// A parser for expecting any token that matches a predicate
+    /// TODO
     ///
-    /// This `struct` is created by the [`any_if`] method on [`sources`](crate::parser::sources).
+    /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
     /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
     #[derive(Debug, Clone, Copy)]
@@ -211,31 +213,53 @@ pub mod adapters {
     #[derive(Debug, Clone, Copy)]
     pub struct Take<'a>(pub(crate) usize, pub(crate) PhantomData<&'a ()>);
 
-    /// TODO: Documentation
+    /// TODO
+    ///
+    /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
+    /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
     #[derive(Debug, Clone, Copy)]
     pub struct Func<Fun, Out>(pub(crate) Fun, pub(crate) PhantomData<Out>);
 
-    /// TODO: Documentation
+    /// TODO
+    ///
+    /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
+    /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
     #[non_exhaustive]
     #[derive(Debug, Clone, Copy)]
     pub struct Mk<T>(pub(crate) PhantomData<T>);
 
-    /// TODO: Documentation
+    /// TODO
+    ///
+    /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
+    /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
     #[derive(Debug, Clone, Copy)]
     pub struct MkDefault<T>(pub(crate) PhantomData<T>);
 
-    /// TODO: Documentation
+    /// TODO
+    ///
+    /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
+    /// See its documentation for more.
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
     #[derive(Debug, Clone, Copy)]
     pub struct Supply<T>(pub(crate) T);
 
+    /// TODO
+    ///
+    /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
+    /// See its documentation for more.
+    #[must_use = "Parsers are lazy and do nothing unless consumed"]
     pub struct Recursive<Par: ?Sized> {
         pub(crate) parser: std::rc::Rc<Par>,
     }
 
+    /// TODO
+    ///
+    /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
+    /// See its documentation for more.
+    #[must_use = "Parsers are lazy and do nothing unless consumed"]
     pub struct Weak<Par: ?Sized> {
         pub(crate) parser: std::rc::Weak<Par>,
     }

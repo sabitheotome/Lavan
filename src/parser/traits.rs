@@ -583,20 +583,7 @@ pub trait IterativeParser<Input> {
         Persist(self)
     }
 
-    /// Combine two parsers, running them subsequently.
-    /// The output will be the combination of the two outputs,
-    /// defined by the `trait` [Combinable].
-    ///
-    /// # Examples
-    /// Basic usage:
-    ///```
-    /// use lavan::prelude::*;
-    ///
-    /// let input = "ABC";
-    /// let abc: Option<((char, char), char)> =
-    ///     any().and(any()).and(any()).evaluate(input);
-    /// assert_eq!(abc, Some((('A', 'B'), 'C')));
-    /// ```
+    // TODO: Documentation
     fn catch<Par>(self, catch: Par) -> Catch<Self, Par>
     where
         Self: Sized,

@@ -2,10 +2,10 @@ use crate::input::prelude::*;
 use crate::parser::prelude::*;
 use crate::response::prelude::*;
 
-/// A parser for generating auto-backtracking variants with another parsers
+/// TODO
 ///
-/// This `struct` is created by the [`Parser::try_with`] method on [`Parser`].
-/// See its documentation for more.
+/// This `struct` is created by the [`TODO`] method on [`TODO`].
+/// See its documentation for more.    
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 #[derive(Debug, Clone, Copy)]
 pub struct Catch<Par0, Par1> {

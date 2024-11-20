@@ -5,10 +5,10 @@ use crate::input::prelude::*;
 use crate::parser::prelude::*;
 use crate::response::prelude::*;
 
-/// A parser for ignoring the [`Response::Value`] through [`Ignorable`]
+/// TODO
 ///
-/// This `struct` is created by the [`Parser::discard`] method on [`Parser`].
-/// See its documentation for more.
+/// This `struct` is created by the [`TODO`] method on [`TODO`].
+/// See its documentation for more.    
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 #[derive(Debug, Clone, Copy)]
 pub struct NeverFails<Par, Err>(pub(crate) Par, pub(crate) std::marker::PhantomData<Err>);
