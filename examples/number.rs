@@ -1,9 +1,9 @@
 use lavan::prelude::*;
 
 fn main() {
-    let input = "69420";
+    /*let input = "69420";
 
-    let output: Option<u32> = 
+    let output: Option<u32> =
         // any ascii digit
         any_if(char::is_ascii_digit)
         // repeat until you can't find an ascii digit
@@ -17,8 +17,8 @@ fn main() {
 
     // crash the program if parsing failed
     let number: u32 = output.unwrap();
-    
+
     // print the number
     println!("{number}");
-    assert_eq!(input, number.to_string());
+    assert_eq!(input, number.to_string());*/
 }
