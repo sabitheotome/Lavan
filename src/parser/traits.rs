@@ -33,39 +33,8 @@ use super::{
 use crate::input::prelude::*;
 use crate::response::prelude::*;
 
-pub trait IterativeParser<Input> {
+pub trait Parser {
     type Output: Response;
-
-    /// Partially parses the referenced `input`, advancing the stream, consuming the parser
-    ///
-    /// # Examples
-    /// Basic usage:
-    /// ```
-    /// use lavan::prelude::*;
-    ///
-    /// let mut input = "Hello, World!".chars();
-    /// let first_char = any().parse_once(&mut input);
-    /// assert_eq!(first_char, Some('H'));
-    /// ```
-    fn parse_once(self, input: &mut Input) -> Self::Output;
-
-    /// Parses the token sequence `input`
-    ///
-    /// # Examples
-    /// Basic usage:
-    /// ```
-    /// use lavan::prelude::*;
-    ///
-    /// let mut input = "Hello, World!";
-    /// let first_char = any().evaluate(input);
-    /// assert_eq!(first_char, Some('H'));
-    /// ```
-    fn evaluate(self, input: impl IntoStream<IntoStream = Input>) -> Self::Output
-    where
-        Self: Sized,
-    {
-        self.parse_once(&mut input.into_scanner())
-    }
 
     /// Take this parser by reference, without consuming it.
     /// This operation can be useful if you want to reuse the parser later.
@@ -372,7 +341,6 @@ pub trait IterativeParser<Input> {
     fn slice<'a>(self) -> Slice<'a, Self>
     where
         Self: Sized,
-        Input: StreamSlice,
         Self::Output: Attach,
     {
         Slice {
@@ -547,7 +515,6 @@ pub trait IterativeParser<Input> {
     fn spanned(self) -> Spanned<Self>
     where
         Self: Sized,
-        Input: StreamSpan,
         Self::Output: ValueResponse,
     {
         Spanned { parser: self }
@@ -561,8 +528,8 @@ pub trait IterativeParser<Input> {
     ) -> Delimited<Self, Del0, Del1>
     where
         Self: Sized,
-        Del0: IterativeParser<Input>,
-        Del1: IterativeParser<Input>,
+        Del0: Parser,
+        Del1: Parser,
         Del0::Output: Combine<Self::Output, Output = First>,
         First: Combine<Del1::Output, Output = Second>,
         Second: Response,
@@ -588,7 +555,7 @@ pub trait IterativeParser<Input> {
     where
         Self: Sized,
         Self::Output: Switch<Par::Output, Output: Fallible<Value: Fallible>>,
-        Par: IterativeParser<Input>,
+        Par: Parser,
     {
         Catch {
             parser_try: self,
@@ -614,7 +581,7 @@ pub trait IterativeParser<Input> {
     where
         Self: Sized,
         Self::Output: Combine<Par::Output>,
-        Par: IterativeParser<Input>,
+        Par: Parser,
     {
         And {
             parser0: self,
@@ -661,7 +628,7 @@ pub trait IterativeParser<Input> {
     where
         Self: Sized,
         //Self::Output: Switchable<<Par::Output as Response>::WithVal<<Self::Output as Response>::Value>>,
-        Par: IterativeParser<Input>,
+        Par: Parser,
     {
         Or {
             parser0: self,
@@ -715,7 +682,7 @@ pub trait IterativeParser<Input> {
     fn try_with<Par, Fun, Out1>(self, parser: Par, f: Fun) -> TryWith<Self, Par, Fun>
     where
         Self: Sized,
-        Par: IterativeParser<Input, Output = Out1>,
+        Par: Parser<Output = Out1>,
         Fun: Fn(val![Self], Out1::Value) -> std::ops::ControlFlow<val![Self], val![Self]>,
         Out1: Response<Error = err![Self]>,
     {
@@ -775,6 +742,39 @@ pub trait IterativeParser<Input> {
     {
         assert!(count >= 1);
         self.repeat().min(count).until_eoi()
+    }
+}
+
+pub trait IterativeParser<Input>: Parser {
+    /// Partially parses the referenced `input`, advancing the stream, consuming the parser
+    ///
+    /// # Examples
+    /// Basic usage:
+    /// ```
+    /// use lavan::prelude::*;
+    ///
+    /// let mut input = "Hello, World!".chars();
+    /// let first_char = any().parse_once(&mut input);
+    /// assert_eq!(first_char, Some('H'));
+    /// ```
+    fn parse_once(self, input: &mut Input) -> Self::Output;
+
+    /// Parses the token sequence `input`
+    ///
+    /// # Examples
+    /// Basic usage:
+    /// ```
+    /// use lavan::prelude::*;
+    ///
+    /// let mut input = "Hello, World!";
+    /// let first_char = any().evaluate(input);
+    /// assert_eq!(first_char, Some('H'));
+    /// ```
+    fn evaluate(self, input: impl IntoStream<IntoStream = Input>) -> Self::Output
+    where
+        Self: Sized,
+    {
+        self.parse_once(&mut input.into_scanner())
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use syn::{
-    AttrStyle, Generics, Ident, ItemFn, PatType, Path, ReturnType, Signature, Type, TypeParamBound,
-    WherePredicate,
+    AttrStyle, GenericParam, Generics, Ident, ItemFn, PatType, Path, ReturnType, Signature, Type,
+    TypeParamBound, WherePredicate,
 };
 
 pub fn gen(attr: TokenStream, target: TokenStream) -> TokenStream {
@@ -60,11 +60,12 @@ pub fn gen(attr: TokenStream, target: TokenStream) -> TokenStream {
         }
     }
 
+    let mut base_impl = quote![];
     let mut once_impl = quote![];
     let mut mut_impl = quote![];
     let mut const_impl = quote![];
 
-    let mut supported_mutabilities = vec!["once"];
+    let mut supported_mutabilities = vec!["base", "once"];
 
     if let Type::Reference(ty) = *self_ty.clone() {
         self_ty = ty.elem.clone();
@@ -75,6 +76,7 @@ pub fn gen(attr: TokenStream, target: TokenStream) -> TokenStream {
     }
 
     let traits = external::Traits::associated(input_ty.clone());
+    let parser_trait_path_base: Path = traits.base_parser;
     let parser_trait_path_once: Path = traits.once_parser;
     let parser_trait_path_mut: Path = traits.mut_parser;
     let parser_trait_path_const: Path = traits.ref_parser;
@@ -85,6 +87,7 @@ pub fn gen(attr: TokenStream, target: TokenStream) -> TokenStream {
             "once" => parser_trait_path_once.clone(),
             "mut" => parser_trait_path_mut.clone(),
             "const" => parser_trait_path_const.clone(),
+            "base" => parser_trait_path_base.clone(),
             _ => unreachable!(),
         };
 
@@ -97,82 +100,92 @@ pub fn gen(attr: TokenStream, target: TokenStream) -> TokenStream {
             &parser_trait_path_once,
         );
 
-        if let Some(where_clause) = &mut generics.where_clause {
-            filter_preds(where_clause, mutability);
+        let Some(where_clause) = &mut generics.where_clause else {
+            unreachable!()
+        };
 
-            let (ig, _tg, wc) = generics.split_for_impl();
+        filter_preds(where_clause, mutability);
 
-            let mim_suffix = if is_mut_in_move {
-                quote![.as_mut()]
-            } else {
-                quote![]
-            };
+        let (ig, _tg, wc) = generics.split_for_impl();
 
-            let common_macros = quote! {
-                macro_rules! input {
-                    () => (input)
-                }
-                macro_rules! eval {
-                    ($expr:expr) => ($expr.parse_once(input))
-                }
-            };
+        let mim_suffix = if is_mut_in_move {
+            quote![.as_mut()]
+        } else {
+            quote![]
+        };
 
-            let specific_macros = fun_name2(mutability, mim_suffix);
+        let common_macros = quote! {
+            macro_rules! input {
+                () => (input)
+            }
+            macro_rules! eval {
+                ($expr:expr) => ($expr.parse_once(input))
+            }
+        };
 
-            let body = quote! {
-                #common_macros
-                #specific_macros
-                #block
-            };
+        let specific_macros = fun_name2(mutability, mim_suffix);
 
-            match mutability {
-                "once" => {
-                    once_impl = quote! {
-                        #(#impl_attrs)*
-                        #[allow(non_camel_case_types)]
-                        impl #ig #parser_trait_path_once for #self_ty #wc
-                        {
-                            type Output = #output;
+        let body = quote! {
+            #common_macros
+            #specific_macros
+            #block
+        };
 
-                            #(#func_attrs)*
-                            fn parse_once(#receiver_mut_token self, input: &mut #input_ty) -> #output {
-                               #body
-                            }
+        match mutability {
+            "base" => {
+                base_impl = quote! {
+                    #(#impl_attrs)*
+                    #[allow(non_camel_case_types)]
+                    impl #ig #parser_trait_path_base for #self_ty #wc
+                    {
+                        type Output = #output;
+                    }
+                };
+            }
+            "once" => {
+                once_impl = quote! {
+                    #(#impl_attrs)*
+                    #[allow(non_camel_case_types)]
+                    impl #ig #parser_trait_path_once for #self_ty #wc
+                    {
+                        #(#func_attrs)*
+                        fn parse_once(#receiver_mut_token self, input: &mut #input_ty) -> #output {
+                           #body
                         }
-                    };
-                }
-                "mut" => {
-                    mut_impl = quote! {
-                        #(#impl_attrs)*
-                        #[allow(non_camel_case_types)]
-                        impl #ig #parser_trait_path_mut for #self_ty #wc
-                        {
-                            #(#func_attrs)*
-                            fn parse_as_mut(&mut self, input: &mut #input_ty) -> #output {
-                                #body
-                            }
+                    }
+                };
+            }
+            "mut" => {
+                mut_impl = quote! {
+                    #(#impl_attrs)*
+                    #[allow(non_camel_case_types)]
+                    impl #ig #parser_trait_path_mut for #self_ty #wc
+                    {
+                        #(#func_attrs)*
+                        fn parse_as_mut(&mut self, input: &mut #input_ty) -> #output {
+                            #body
                         }
-                    };
-                }
-                "const" => {
-                    const_impl = quote! {
-                        #(#impl_attrs)*
-                        #[allow(non_camel_case_types)]
-                        impl #ig #parser_trait_path_const for #self_ty #wc
-                        {
-                            #(#func_attrs)*
-                            fn parse_as_ref(&self, input: &mut #input_ty) -> #output {
-                                #body
-                            }
+                    }
+                };
+            }
+            "const" => {
+                const_impl = quote! {
+                    #(#impl_attrs)*
+                    #[allow(non_camel_case_types)]
+                    impl #ig #parser_trait_path_const for #self_ty #wc
+                    {
+                        #(#func_attrs)*
+                        fn parse_as_ref(&self, input: &mut #input_ty) -> #output {
+                            #body
                         }
-                    };
-                }
-                _ => unreachable!(),
-            };
-        }
+                    }
+                };
+            }
+            _ => unreachable!(),
+        };
     }
 
-    quote! { #once_impl #mut_impl #const_impl }.into()
+    quote! { #base_impl #once_impl #mut_impl #const_impl }.into()
 }
 
 fn input_ty_setup(generics: &mut Generics, bound: &TypeParamBound) -> Result<Option<Type>, ()> {
@@ -256,7 +269,7 @@ fn fun_name2(mutability: &str, mim_suffix: TokenStream2) -> TokenStream2 {
                 (_ => $expr:expr $(,)?) => { $expr };
             }
         },
-        _ => unreachable!(),
+        _ => quote![],
     }
 }
 
@@ -296,6 +309,14 @@ fn fun_name1(
             }
         }
     }
+
+    punct_filter(&mut generics.params, |ele| {
+        mutability != "base"
+            || match ele.value() {
+                GenericParam::Type(param) => param.ident.to_string() != "INPUT",
+                _ => true,
+            }
+    });
 
     for ele in generics.type_params_mut() {
         let string = ele.ident.to_string();
