@@ -1,6 +1,4 @@
-use crate::input::prelude::*;
-use crate::parser::prelude::*;
-use crate::response::prelude::*;
+use crate::parser::prelude::internal::*;
 
 /// A parser for alternating two parsers through [`Switchable`]
 ///
@@ -33,13 +31,13 @@ impl<Par0, Par1> Or<Par0, Par1> {
     pub fn either<Input: Stream>(
         self,
     ) -> Or<
-        impl IterativeParser<Input, Output = val![Par0<Either<val![Par0], val![Par1]>>]>,
-        impl IterativeParser<Input, Output = val![Par1<Either<val![Par0], val![Par1]>>]>,
+        impl ParseOnce<Input, Output = val![Par0<Either<val![Par0], val![Par1]>>]>,
+        impl ParseOnce<Input, Output = val![Par1<Either<val![Par0], val![Par1]>>]>,
     >
     where
-        Par0: IterativeParser<Input>,
+        Par0: ParseOnce<Input>,
         Par0::Output: ValueResponse,
-        Par1: IterativeParser<Input>,
+        Par1: ParseOnce<Input>,
         Par1::Output: ValueResponse,
         val![Par0<Either<val![Par0], val![Par1]>>]:
             Switch<val![Par1<Either<val![Par0], val![Par1]>>]>,

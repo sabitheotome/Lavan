@@ -1,8 +1,4 @@
-use std::ops::ControlFlow::*;
-
-use crate::input::prelude::*;
-use crate::parser::prelude::*;
-use crate::response::prelude::*;
+use crate::parser::prelude::internal::*;
 
 /// TODO
 ///
@@ -28,7 +24,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::IterativeParser;
+    use super::ParseOnce;
     use crate::prelude::any;
 
     #[test]

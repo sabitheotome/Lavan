@@ -1,6 +1,4 @@
-use crate::input::prelude::*;
-use crate::parser::prelude::*;
-use crate::response::prelude::*;
+use crate::parser::prelude::internal::*;
 use std::marker::PhantomData;
 
 /// A parser for flat-mapping responses

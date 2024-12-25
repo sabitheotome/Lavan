@@ -1,6 +1,4 @@
-use crate::input::prelude::*;
-use crate::parser::prelude::*;
-use crate::response::prelude::*;
+use crate::parser::prelude::internal::*;
 
 // TODO: Documentation
 pub type SelFn<Par, Val0, Val1> = Sel<Par, fn(Val0) -> Val1>;
@@ -12,6 +10,7 @@ pub type SelErrFn<Par, Val0, Val1> = SelErr<Par, fn(Val0) -> Val1>;
 ///
 /// This `struct` is created by the [`Parser::map`] method on [`Parser`].
 /// See its documentation for more.
+#[stability::unstable(feature = "unstable_name")]
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 #[derive(Debug, Clone, Copy)]
 pub struct Map<Par, Fun> {
@@ -23,6 +22,7 @@ pub struct Map<Par, Fun> {
 ///
 /// This `struct` is created by the [`Parser::map`] method on [`Parser`].
 /// See its documentation for more.
+#[stability::unstable(feature = "unstable_name")]
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 #[derive(Debug, Clone, Copy)]
 pub struct MapErr<Par, Fun> {
@@ -34,6 +34,7 @@ pub struct MapErr<Par, Fun> {
 ///
 /// This `struct` is created by the [`Parser::map`] method on [`Parser`].
 /// See its documentation for more.
+#[stability::unstable(feature = "unstable_name")]
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 #[derive(Debug, Clone, Copy)]
 pub struct Sel<Par, Fun> {
@@ -45,6 +46,7 @@ pub struct Sel<Par, Fun> {
 ///
 /// This `struct` is created by the [`Parser::map_err`] method on [`Parser`].
 /// See its documentation for more.
+#[stability::unstable(feature = "unstable_name")]
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 #[derive(Debug, Clone, Copy)]
 pub struct SelErr<Par, Fun> {

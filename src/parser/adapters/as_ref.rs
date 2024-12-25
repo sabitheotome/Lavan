@@ -1,6 +1,4 @@
-use crate::input::prelude::*;
-use crate::parser::prelude::*;
-use crate::response::prelude::*;
+use crate::parser::prelude::internal::*;
 
 /// A parser for taking another parser by reference
 ///
@@ -15,9 +13,9 @@ pub struct AsRef<'a, Par> {
 #[parser_fn]
 fn as_ref<'a, Par>(self: &AsRef<'a, Par>) -> Par::Output
 where
-    Par: IterativeParserRef<INPUT>,
+    Par: Parse<INPUT>,
 {
-    self.parser.parse_as_ref(input)
+    self.parser.parse(input)
 }
 
 /// A parser for taking another parser by reference
@@ -33,7 +31,7 @@ pub struct AsMut<'a, Par> {
 #[parser_fn]
 fn as_mut<'a, Par>(self: &mut AsMut<'a, Par>) -> Par::Output
 where
-    Par: IterativeParserMut<INPUT>,
+    Par: ParseMut<INPUT>,
 {
-    self.parser.parse_as_mut(input)
+    self.parser.parse_mut(input)
 }
