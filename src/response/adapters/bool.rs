@@ -1,4 +1,4 @@
-use crate::response::prelude::*;
+use crate::response::prelude::internal::*;
 
 impl Response for bool {
     type Value = ();
