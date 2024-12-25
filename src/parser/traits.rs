@@ -18,7 +18,6 @@ use super::{
         owned::Owned,
         parse_str::ParseStr,
         persist::Persist,
-        repeat::adapters::*,
         slice::Slice,
         spanned::Spanned,
         then::Then,
@@ -30,10 +29,14 @@ use super::{
         any, func,
     },
 };
+
+#[cfg(feature = "unstable_repeat_api_2021_v1")]
+use super::adapters::repeat::adapters::*;
+
 use crate::input::prelude::*;
 use crate::response::prelude::*;
 
-pub trait IterativeParser<Input> {
+pub trait ParseOnce<Input> {
     type Output: Response;
 
     /// Partially parses the referenced `input`, advancing the stream, consuming the parser
@@ -137,6 +140,7 @@ pub trait IterativeParser<Input> {
     ///     any().map(char::is_uppercase).evaluate(input);
     /// assert_eq!(is_uppercase, Some(true));
     /// ```
+    #[stability::unstable(feature = "unstable_name")]
     fn map<Val, Fun>(self, f: Fun) -> Map<Self, Fun>
     where
         Self: Sized,
@@ -164,6 +168,7 @@ pub trait IterativeParser<Input> {
     ///     .map_err(|| ExpectedSomethingError).evaluate(input);
     /// assert_eq!(result, Err(ExpectedSomethingError));
     /// ```
+    #[stability::unstable(feature = "unstable_name")]
     fn map_err<Fun, Err>(self, f: Fun) -> MapErr<Self, Fun>
     where
         Self: Sized,
@@ -187,6 +192,7 @@ pub trait IterativeParser<Input> {
     ///     any().map(char::is_uppercase).evaluate(input);
     /// assert_eq!(is_uppercase, Some(true));
     /// ```
+    #[stability::unstable(feature = "unstable_name")]
     fn sel<Fun>(self, f: Fun) -> Sel<Self, Fun>
     where
         Self: Sized,
@@ -214,6 +220,7 @@ pub trait IterativeParser<Input> {
     ///     .map_err(|| ExpectedSomethingError).evaluate(input);
     /// assert_eq!(result, Err(ExpectedSomethingError));
     /// ```
+    #[stability::unstable(feature = "unstable_name")]
     fn sel_err<Fun>(self, f: Fun) -> SelErr<Self, Fun>
     where
         Self: Sized,
@@ -349,6 +356,7 @@ pub trait IterativeParser<Input> {
     }
 
     // TODO: Documentation
+    #[stability::unstable(feature = "unstable_name")]
     fn lift(self) -> Lift<Self>
     where
         Self: Sized,
@@ -561,8 +569,8 @@ pub trait IterativeParser<Input> {
     ) -> Delimited<Self, Del0, Del1>
     where
         Self: Sized,
-        Del0: IterativeParser<Input>,
-        Del1: IterativeParser<Input>,
+        Del0: ParseOnce<Input>,
+        Del1: ParseOnce<Input>,
         Del0::Output: Combine<Self::Output, Output = First>,
         First: Combine<Del1::Output, Output = Second>,
         Second: Response,
@@ -588,7 +596,7 @@ pub trait IterativeParser<Input> {
     where
         Self: Sized,
         Self::Output: Switch<Par::Output, Output: Fallible<Value: Fallible>>,
-        Par: IterativeParser<Input>,
+        Par: ParseOnce<Input>,
     {
         Catch {
             parser_try: self,
@@ -614,7 +622,7 @@ pub trait IterativeParser<Input> {
     where
         Self: Sized,
         Self::Output: Combine<Par::Output>,
-        Par: IterativeParser<Input>,
+        Par: ParseOnce<Input>,
     {
         And {
             parser0: self,
@@ -661,7 +669,7 @@ pub trait IterativeParser<Input> {
     where
         Self: Sized,
         //Self::Output: Switchable<<Par::Output as Response>::WithVal<<Self::Output as Response>::Value>>,
-        Par: IterativeParser<Input>,
+        Par: ParseOnce<Input>,
     {
         Or {
             parser0: self,
@@ -715,7 +723,7 @@ pub trait IterativeParser<Input> {
     fn try_with<Par, Fun, Out1>(self, parser: Par, f: Fun) -> TryWith<Self, Par, Fun>
     where
         Self: Sized,
-        Par: IterativeParser<Input, Output = Out1>,
+        Par: ParseOnce<Input, Output = Out1>,
         Fun: Fn(val![Self], Out1::Value) -> std::ops::ControlFlow<val![Self], val![Self]>,
         Out1: Response<Error = err![Self]>,
     {
@@ -727,6 +735,7 @@ pub trait IterativeParser<Input> {
     }
 
     // TODO: Documentation
+    #[cfg(feature = "unstable_repeat_api_2021_v1")]
     fn repeat(self) -> Repeater<Self>
     where
         Self: Sized,
@@ -735,6 +744,7 @@ pub trait IterativeParser<Input> {
     }
 
     // TODO: Documentation
+    #[cfg(feature = "unstable_repeat_api_2021_v1")]
     fn repeat_eoi(self) -> RepeatEOI<Self>
     where
         Self: Sized,
@@ -743,6 +753,7 @@ pub trait IterativeParser<Input> {
     }
 
     // TODO: Documentation
+    #[cfg(feature = "unstable_repeat_api_2021_v1")]
     fn repeat_exact(self, count: usize) -> RepeatExact<Self>
     where
         Self: Sized,
@@ -752,6 +763,7 @@ pub trait IterativeParser<Input> {
     }
 
     // TODO: Documentation
+    #[cfg(feature = "unstable_repeat_api_2021_v1")]
     fn repeat_max(self, count: usize) -> RepeatMax<Self>
     where
         Self: Sized,
@@ -760,6 +772,8 @@ pub trait IterativeParser<Input> {
         self.repeat().max(count)
     }
 
+    // TODO: Documentation
+    #[cfg(feature = "unstable_repeat_api_2021_v1")]
     fn repeat_min(self, count: usize) -> RepeatMin<Self>
     where
         Self: Sized,
@@ -769,6 +783,7 @@ pub trait IterativeParser<Input> {
     }
 
     // TODO: Documentation
+    #[cfg(feature = "unstable_repeat_api_2021_v1")]
     fn repeat_min_eoi(self, count: usize) -> RepeatMinEOI<Self>
     where
         Self: Sized,
@@ -778,7 +793,7 @@ pub trait IterativeParser<Input> {
     }
 }
 
-pub trait IterativeParserMut<Input>: IterativeParser<Input> {
+pub trait ParseMut<Input>: ParseOnce<Input> {
     /// Partially parses the referenced `input`, advancing the stream
     ///
     /// # Examples
@@ -791,10 +806,10 @@ pub trait IterativeParserMut<Input>: IterativeParser<Input> {
     /// let first_char = any().next(&mut stream);
     /// assert_eq!(first_char, Some('H'));
     /// ```
-    fn parse_as_mut(&mut self, input: &mut Input) -> Self::Output;
+    fn parse_mut(&mut self, input: &mut Input) -> Self::Output;
 }
 
-pub trait IterativeParserRef<Input>: IterativeParserMut<Input> {
+pub trait Parse<Input>: ParseMut<Input> {
     /// Partially parses the referenced `input`, advancing the stream
     ///
     /// # Examples
@@ -807,10 +822,10 @@ pub trait IterativeParserRef<Input>: IterativeParserMut<Input> {
     /// let first_char = any().next(&mut stream);
     /// assert_eq!(first_char, Some('H'));
     /// ```
-    fn parse_as_ref(&self, input: &mut Input) -> Self::Output;
+    fn parse(&self, input: &mut Input) -> Self::Output;
 }
 
-impl<F, Input, Output> IterativeParser<Input> for F
+impl<F, Input, Output> ParseOnce<Input> for F
 where
     F: FnOnce(&mut Input) -> Output,
     Input: Stream,
@@ -823,29 +838,29 @@ where
     }
 }
 
-impl<F, Input, Output> IterativeParserMut<Input> for F
+impl<F, Input, Output> ParseMut<Input> for F
 where
-    F: FnMut(&mut Input) -> Output + IterativeParser<Input, Output = Output>,
+    F: FnMut(&mut Input) -> Output + ParseOnce<Input, Output = Output>,
     Input: Stream,
     Output: Response,
 {
-    fn parse_as_mut(&mut self, input: &mut Input) -> Self::Output {
+    fn parse_mut(&mut self, input: &mut Input) -> Self::Output {
         self(input)
     }
 }
 
-impl<F, Input, Output> IterativeParserRef<Input> for F
+impl<F, Input, Output> Parse<Input> for F
 where
-    F: Fn(&mut Input) -> Output + IterativeParserMut<Input, Output = Output>,
+    F: Fn(&mut Input) -> Output + ParseMut<Input, Output = Output>,
     Input: Stream,
     Output: Response,
 {
-    fn parse_as_ref(&self, input: &mut Input) -> Self::Output {
+    fn parse(&self, input: &mut Input) -> Self::Output {
         self(input)
     }
 }
 
-pub trait Parse<Input>
+pub trait FromParse<Input>
 where
     Input: Stream,
 {
@@ -854,10 +869,10 @@ where
     fn parse(input: &mut Input) -> Self::Output;
 }
 
-impl<Input, T> Parse<Input> for Option<T>
+impl<Input, T> FromParse<Input> for Option<T>
 where
     Input: Stream,
-    T: Parse<Input>,
+    T: FromParse<Input>,
     T::Output: Fallible<Optional = Sure<Option<T>>>,
 {
     type Output = Sure<Self>;
@@ -868,11 +883,11 @@ where
 }
 
 #[cfg(feature = "either")]
-impl<Input, L, R> Parse<Input> for either::Either<L, R>
+impl<Input, L, R> FromParse<Input> for either::Either<L, R>
 where
     Input: Stream,
-    L: Parse<Input>,
-    R: Parse<Input, Output = L::Output>,
+    L: FromParse<Input>,
+    R: FromParse<Input, Output = L::Output>,
     L::Output: Switch<R::Output>,
 
     val![L<either::Either<val![L], val![R]>>]:

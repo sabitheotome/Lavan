@@ -1,5 +1,4 @@
-use super::{super::input::prelude::*, super::response::prelude::*, prelude::*};
-use std::marker::PhantomData;
+use super::prelude::internal::*;
 
 pub use functions::*;
 
@@ -9,7 +8,7 @@ pub mod functions {
     pub fn src<Par, I>(par: Par) -> Src<Par, I> {
         Src(par, PhantomData)
     }
-
+    
     // TODO: Documentation
     pub fn nop<I: Stream>() -> Src<NOP, I> {
         src(NOP)
@@ -36,7 +35,7 @@ pub mod functions {
     // TODO: Documentation
     pub fn any_then<Fun, I: Stream>(f: Fun) -> Src<AnyThen<Fun>, I>
     where
-        AnyThen<Fun>: IterativeParser<I>,
+        AnyThen<Fun>: ParseOnce<I>,
     {
         src(AnyThen(f))
     }
@@ -78,7 +77,7 @@ pub mod functions {
     // TODO: Documentation
     pub fn mk<T, I: Stream>() -> Src<Mk<T>, I>
     where
-        T: Parse<I>,
+        T: FromParse<I>,
     {
         src(Mk(PhantomData))
     }
@@ -100,14 +99,14 @@ pub mod functions {
     pub fn recursive<'a, Out, Par, Fun, I>(f: Fun) -> Src<Recursive<Par>, I>
     where
         I: Stream,
-        Par: 'a + IterativeParserRef<I, Output = Out>,
-        Fun: Fn(Weak<dyn 'a + IterativeParserRef<I, Output = Out>>) -> Par,
+        Par: 'a + Parse<I, Output = Out>,
+        Fun: Fn(Weak<dyn 'a + Parse<I, Output = Out>>) -> Par,
     {
         src(Recursive {
             parser: std::rc::Rc::new_cyclic(|weak| {
                 f(Weak {
                     parser: weak.clone()
-                        as std::rc::Weak<dyn IterativeParserRef<I, Output = Par::Output>>,
+                        as std::rc::Weak<dyn Parse<I, Output = Par::Output>>,
                 })
             }),
         })
@@ -245,11 +244,11 @@ pub mod adapters {
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
     #[derive(Debug, Clone, Copy)]
     pub struct Supply<T>(pub(crate) T);
-
+        
     /// TODO
     ///
     /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
-    /// See its documentation for more.
+    /// See its documentation for more
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
     #[derive(Debug, Clone)]
     pub struct Recursive<Par: ?Sized> {
@@ -343,7 +342,7 @@ mod impls {
     #[parser_fn]
     fn mk<T>(self: &Mk<T>) -> T::Output
     where
-        T: Parse<INPUT>,
+        T: FromParse<INPUT>,
     {
         T::parse(input)
     }
@@ -370,16 +369,16 @@ mod impls {
     #[parser_fn]
     fn recursive<Par>(self: &Recursive<Par>) -> Par::Output
     where
-        Par: ?Sized + IterativeParserRef<INPUT>,
+        Par: ?Sized + Parse<INPUT>,
     {
-        self.parser.parse_as_ref(input)
+        self.parser.parse(input)
     }
 
     #[parser_fn]
     fn weak<Par>(self: &Weak<Par>) -> Par::Output
     where
-        Par: ?Sized + IterativeParserRef<INPUT>,
+        Par: ?Sized + Parse<INPUT>,
     {
-        self.parser.upgrade().unwrap().parse_as_ref(input)
+        self.parser.upgrade().unwrap().parse(input)
     }
 }
