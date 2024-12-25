@@ -148,7 +148,7 @@ pub fn gen(attr: TokenStream, target: TokenStream) -> TokenStream {
                         impl #ig #parser_trait_path_mut for #self_ty #wc
                         {
                             #(#func_attrs)*
-                            fn parse_as_mut(&mut self, input: &mut #input_ty) -> #output {
+                            fn parse_mut(&mut self, input: &mut #input_ty) -> #output {
                                 #body
                             }
                         }
@@ -161,7 +161,7 @@ pub fn gen(attr: TokenStream, target: TokenStream) -> TokenStream {
                         impl #ig #parser_trait_path_const for #self_ty #wc
                         {
                             #(#func_attrs)*
-                            fn parse_as_ref(&self, input: &mut #input_ty) -> #output {
+                            fn parse(&self, input: &mut #input_ty) -> #output {
                                 #body
                             }
                         }
@@ -233,7 +233,7 @@ fn fun_name2(mutability: &str, mim_suffix: TokenStream2) -> TokenStream2 {
                 ($(use $t:tt =>)? $expr:expr) => [$expr.as_mut()];
             }
             macro_rules! parse {
-                ($(use $t:tt =>)? $e:expr) => [$e.parse_as_mut(input)];
+                ($(use $t:tt =>)? $e:expr) => [$e.parse_mut(input)];
             }
             macro_rules! when {
                 (move => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
@@ -247,7 +247,7 @@ fn fun_name2(mutability: &str, mim_suffix: TokenStream2) -> TokenStream2 {
                 ($(use $t:tt =>)? $expr:expr) => [$expr.as_ref()];
             }
             macro_rules! parse {
-                ($(use $t:tt =>)? $e:expr) => [$e.parse_as_ref(input)];
+                ($(use $t:tt =>)? $e:expr) => [$e.parse(input)];
             }
             macro_rules! when {
                 (move => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };

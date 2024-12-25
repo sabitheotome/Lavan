@@ -10,17 +10,17 @@ pub struct Traits {
 impl Traits {
     fn _new() -> Self {
         Self {
-            once_parser: lavan_path!(parser::traits::IterativeParser),
-            mut_parser: lavan_path!(parser::traits::IterativeParserMut),
-            ref_parser: lavan_path!(parser::traits::IterativeParserRef),
+            once_parser: lavan_path!(parser::traits::ParseOnce),
+            mut_parser: lavan_path!(parser::traits::ParseMut),
+            ref_parser: lavan_path!(parser::traits::Parse),
         }
     }
 
     pub fn associated(ty: impl ToTokens) -> Self {
         Self {
-            once_parser: lavan_path!(parser::traits::IterativeParser<#ty>),
-            mut_parser: lavan_path!(parser::traits::IterativeParserMut<#ty>),
-            ref_parser: lavan_path!(parser::traits::IterativeParserRef<#ty>),
+            once_parser: lavan_path!(parser::traits::ParseOnce<#ty>),
+            mut_parser: lavan_path!(parser::traits::ParseMut<#ty>),
+            ref_parser: lavan_path!(parser::traits::Parse<#ty>),
         }
     }
 }
