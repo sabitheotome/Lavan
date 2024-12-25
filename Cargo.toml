@@ -1,6 +1,6 @@
 [package]
 name = "lavan"
-version = "0.0.5-unstable"
+version = "0.0.4-pre-rc-unstable"
 authors = ["Sabi <sabitheotome@tutanota.de>"]
 description = "Lavan is a parser library"
 license = "GPL-3.0"
@@ -8,6 +8,7 @@ repository = "https://github.com/sabitheotome/lavan"
 edition = "2021"
 
 [dependencies]
+stability = "0.2.1"
 lavan-proc-macros = { path = "./macros" }
 either = { version = "1.9.0", optional = true }
 
@@ -18,18 +19,18 @@ default = ["either"]
 either = ["dep:either"]
 
 # unstable
-experimental = []
-experimental_api_2021 = ["experimental", "experimental_prelude_2021_v1", "experimental_parser_api_2021_v1"]
-experimental_prelude_2021_v1 = ["experimental"]
-experimental_parser_api_2021_v1 = ["experimental"]
+# experimental = []
+# experimental_api_2021 = ["experimental", "experimental_prelude_2021_v1", "experimental_parser_api_2021_v1"]
+# experimental_prelude_2021_v1 = ["experimental"]
+# experimental_parser_api_2021_v1 = ["experimental"]
 
 # experimental
 unstable = []
-unstable_api_2021 = ["unstable", "unstable_prelude_2021_v1", "unstable_text_util_2021_v1", "unstable_repeat_api_2021_v1", "unstable_parser_api_2021_v1"]
+unstable_api_2021 = ["unstable", "unstable_prelude_2021_v1", "unstable_text_util_2021_v1", "unstable_repeat_api_2021_v1", "unstable_name"]
 unstable_prelude_2021_v1 = ["unstable"]
 unstable_text_util_2021_v1 = ["unstable"]
 unstable_repeat_api_2021_v1 = ["unstable"]
-unstable_parser_api_2021_v1 = ["unstable"]
+unstable_name = ["unstable"]
 
 # unsafe
 unsafe_parser_gen_macro_v1 = []
