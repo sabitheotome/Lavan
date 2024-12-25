@@ -1,8 +1,5 @@
 use super::adapters::cursor::Cursor;
-use crate::parser::{
-    adapters::slice::Slice,
-    traits::{IterativeParser, Parse},
-};
+use crate::parser::{adapters::slice::Slice, prelude::*};
 
 pub trait Stream: Iterator {
     type SaveState;
@@ -35,7 +32,7 @@ pub trait Stream: Iterator {
     fn parse<T>(&mut self) -> T::Output
     where
         Self: Sized,
-        T: Parse<Self>,
+        T: FromParse<Self>,
     {
         T::parse(self)
     }
@@ -69,7 +66,7 @@ pub trait IntoStream {
     fn evaluate<Par>(self, parser: Par) -> Par::Output
     where
         Self: Sized,
-        Par: IterativeParser<Self::IntoStream>,
+        Par: ParseOnce<Self::IntoStream>,
     {
         parser.evaluate(self)
     }
