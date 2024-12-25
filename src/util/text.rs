@@ -4,7 +4,7 @@ use lavan_proc_macros::{parser_fn, source_parser};
 
 pub fn string<'a, I: 'a + StrStream<'a>>(
     quotation_mark: char,
-) -> impl 'a + IterativeParser<I, Output = Option<&'a str>> {
+) -> impl 'a + ParseOnce<I, Output = Option<&'a str>> {
     any_ne(quotation_mark)
         .del()
         .repeat()
@@ -136,17 +136,15 @@ pub mod ascii {
 pub mod utf {
     use super::*;
 
-    pub fn alphanumeric<'a, I: 'a + StrStream<'a>>() -> impl 'a + IterativeParser<I, Output = bool>
-    {
+    pub fn alphanumeric<'a, I: 'a + StrStream<'a>>() -> impl 'a + ParseOnce<I, Output = bool> {
         any_if(|c: &char| c.is_alphanumeric()).del()
     }
 
-    pub fn alphabetic<'a, I: 'a + StrStream<'a>>() -> impl 'a + IterativeParser<I, Output = bool> {
+    pub fn alphabetic<'a, I: 'a + StrStream<'a>>() -> impl 'a + ParseOnce<I, Output = bool> {
         any_if(|c: &char| c.is_alphanumeric()).del()
     }
 
-    pub fn identifier<'a, I: 'a + StrStream<'a>>(
-    ) -> impl IterativeParser<I, Output = Option<&'a str>> {
+    pub fn identifier<'a, I: 'a + StrStream<'a>>() -> impl ParseOnce<I, Output = Option<&'a str>> {
         any_if(|c: &char| c.is_alphabetic())
             .or(any_eq('_'))
             .del()
@@ -159,13 +157,13 @@ pub mod utf {
             .slice()
     }
 
-    pub fn trim<'a, I: StrStream<'a>>() -> impl IterativeParser<I, Output = ()> {
+    pub fn trim<'a, I: StrStream<'a>>() -> impl ParseOnce<I, Output = ()> {
         any_if(|c: &char| c.is_whitespace()).del().repeat()
     }
 
     pub fn int_seq<'a, I: 'a + StrStream<'a>>(
         radix: u32,
-    ) -> impl IterativeParser<I, Output = Option<&'a str>> {
+    ) -> impl ParseOnce<I, Output = Option<&'a str>> {
         any_if(move |c: &char| c.is_digit(radix))
             .del()
             .repeat_min(1)
