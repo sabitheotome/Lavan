@@ -1,11 +1,28 @@
-pub use crate::input::prelude::*;
-pub use crate::parser::sources::functions::*;
-pub use crate::parser::traits::{IterativeParser, Parse};
-pub use crate::response::adapters::{sure::Sure, unsure::Unsure};
-pub use crate::util::text::{ascii, utf};
-pub(crate) use std::ops::ControlFlow::*;
+#![cfg(feature = "unstable_prelude_2021_v1")]
 
-pub mod parser {}
-pub mod response {}
-pub mod input {}
-pub(crate) mod internal {}
+pub use crate::util::{
+    text::{ascii, utf},
+    *,
+};
+
+pub use input::*;
+pub use parser::*;
+pub use response::*;
+
+pub mod parser {
+    pub use crate::parser::sources::functions::*;
+    pub use crate::parser::traits::{FromParse, Parse, ParseMut, ParseOnce};
+}
+
+pub mod response {
+    pub use crate::response::adapters::{sure::Sure, unsure::Unsure};
+    pub use crate::response::traits::Response;
+}
+
+pub mod input {
+    pub use crate::input::prelude::*;
+}
+
+pub(crate) mod internal {
+    pub(crate) use super::*;
+}
