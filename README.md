@@ -27,7 +27,7 @@ A library for empowering users to build concise parsers, either for domain-speci
 ## Parsing an email address
 
 ```rust
-#![cfg(feature = "unstable_experiments_2021")]
+#![cfg(feature = "unstable-api-2021")]
 use lavan::prelude::*;
 
 fn main() {
@@ -54,7 +54,6 @@ fn main() {
 
 # Release cycle
 
-- We expect to launch v0.0.4-unstable in late December 2024. After that, monthly releases should roll out.
 - Lavan will reach v0.1.0-unstable once it's 2024 rust edition migration is complete.
 - After a solid and stable API, Lavan will reach 1.0.0-pre-alpha. Minor refactoring and optimizations will be prioritized.
 - Once benchmarks are made and code is consolidated, we will reach 1-0-0-alpha.
