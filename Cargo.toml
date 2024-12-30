@@ -1,6 +1,6 @@
 [package]
 name = "lavan"
-version = "0.0.4-pre-rc-unstable"
+version = "0.0.4-rc-unstable"
 authors = ["Sabi <sabitheotome@tutanota.de>"]
 description = "Lavan is a parser library"
 license = "GPL-3.0"
@@ -26,11 +26,11 @@ either = ["dep:either"]
 
 # experimental
 unstable = []
-unstable_api_2021 = ["unstable", "unstable_prelude_2021_v1", "unstable_text_util_2021_v1", "unstable_repeat_api_2021_v1", "unstable_name"]
-unstable_prelude_2021_v1 = ["unstable"]
-unstable_text_util_2021_v1 = ["unstable"]
-unstable_repeat_api_2021_v1 = ["unstable"]
-unstable_name = ["unstable"]
+unstable-api-2021 = ["unstable", "unstable-prelude-2021-v1", "unstable-text-util-2021-v1", "unstable-repeat-api-2021-v1", "unstable-name-tbd"]
+unstable-prelude-2021-v1 = ["unstable"]
+unstable-text-util-2021-v1 = ["unstable"]
+unstable-repeat-api-2021-v1 = ["unstable"]
+unstable-name-tbd = ["unstable"]
 
 # unsafe
 unsafe_parser_gen_macro_v1 = []
