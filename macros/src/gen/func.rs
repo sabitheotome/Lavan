@@ -224,7 +224,7 @@ fn fun_name2(mutability: &str, mim_suffix: TokenStream2) -> TokenStream2 {
             macro_rules! when {
                 (move => $expr:expr, $($tt:tt)*) => { $expr };
                 (mut => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
-                (const => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
+                (ref => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
                 (_ => $expr:expr $(,)?) => { $expr };
             }
         },
@@ -238,7 +238,7 @@ fn fun_name2(mutability: &str, mim_suffix: TokenStream2) -> TokenStream2 {
             macro_rules! when {
                 (move => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
                 (mut => $expr:expr, $($tt:tt)*) => { $expr };
-                (const => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
+                (ref => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
                 (_ => $expr:expr $(,)?) => { $expr };
             }
         },
@@ -252,7 +252,7 @@ fn fun_name2(mutability: &str, mim_suffix: TokenStream2) -> TokenStream2 {
             macro_rules! when {
                 (move => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
                 (mut => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
-                (const => $expr:expr, $($tt:tt)*) => { $expr };
+                (ref => $expr:expr, $($tt:tt)*) => { $expr };
                 (_ => $expr:expr $(,)?) => { $expr };
             }
         },
@@ -347,9 +347,14 @@ fn is_pred_allowed(pr: &mut syn::PredicateType, mutability: &str) -> bool {
                 break 'blk true;
             };
 
-            let lf = param.lifetime.ident.to_string();
+            let lf = match param.lifetime.ident.to_string().as_ref() {
+                "impl_move" => "once",
+                "impl_mut" => "mut",
+                "impl_ref" => "const",
+                _ => "",
+            };
 
-            match (lf.as_str(), lf == mutability) {
+            match (lf, lf == mutability) {
                 ("once" | "mut" | "const", b) => {
                     if b {
                         found_eq = true;
