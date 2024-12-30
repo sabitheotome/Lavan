@@ -1,4 +1,4 @@
-#![cfg(feature = "unstable_prelude_2021_v1")]
+#![cfg(feature = "unstable-prelude-2021-v1")]
 
 pub use crate::util::{
     text::{ascii, utf},

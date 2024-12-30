@@ -29,9 +29,9 @@ pub mod parser {
         pub mod parse_str;
         pub mod persist;
 
-        #[cfg(feature = "unstable_repeat_api_2021_v1")]
+        #[cfg(feature = "unstable-repeat-api-2021-v1")]
         pub mod repeat;
-        #[cfg(not(feature = "unstable_repeat_api_2021_v1"))]
+        #[cfg(not(feature = "unstable-repeat-api-2021-v1"))]
         pub(crate) mod repeat;
 
         pub mod slice;
@@ -68,12 +68,12 @@ pub mod input {
     pub mod traits;
 }
 pub mod util {
-    #[cfg(feature = "unstable_text_util_2021_v1")]
+    #[cfg(feature = "unstable-text-util-2021-v1")]
     pub mod text;
-    #[cfg(not(feature = "unstable_text_util_2021_v1"))]
+    #[cfg(not(feature = "unstable-text-util-2021-v1"))]
     pub(crate) mod text;
 }
-#[cfg(feature = "unstable_prelude_2021_v1")]
+#[cfg(feature = "unstable-prelude-2021-v1")]
 pub mod prelude;
-#[cfg(not(feature = "unstable_prelude_2021_v1"))]
+#[cfg(not(feature = "unstable-prelude-2021-v1"))]
 pub(crate) mod prelude;

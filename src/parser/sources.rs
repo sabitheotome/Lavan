@@ -8,7 +8,7 @@ pub mod functions {
     pub fn src<Par, I>(par: Par) -> Src<Par, I> {
         Src(par, PhantomData)
     }
-    
+
     // TODO: Documentation
     pub fn nop<I: Stream>() -> Src<NOP, I> {
         src(NOP)
@@ -105,8 +105,7 @@ pub mod functions {
         src(Recursive {
             parser: std::rc::Rc::new_cyclic(|weak| {
                 f(Weak {
-                    parser: weak.clone()
-                        as std::rc::Weak<dyn Parse<I, Output = Par::Output>>,
+                    parser: weak.clone() as std::rc::Weak<dyn Parse<I, Output = Par::Output>>,
                 })
             }),
         })
@@ -133,7 +132,7 @@ pub mod adapters {
     #[parser_fn]
     fn infer<par>(self: &Src<par, INPUT>) -> par::Output
     where
-        par: IterativeParser<INPUT>,
+        par: ParseOnce<INPUT>,
     {
         parse![self.0]
     }
@@ -244,7 +243,7 @@ pub mod adapters {
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
     #[derive(Debug, Clone, Copy)]
     pub struct Supply<T>(pub(crate) T);
-        
+
     /// TODO
     ///
     /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
@@ -285,9 +284,9 @@ mod impls {
     #[parser_fn]
     fn any_if<Fun>(self: &AnyIf<Fun>) -> Option<INPUT::Item>
     where
-        for<'once> Fun: FnOnce(&INPUT::Item) -> bool,
-        for<'mut> Fun: FnMut(&INPUT::Item) -> bool,
-        for<'const> Fun: Fn(&INPUT::Item) -> bool,
+        for<'impl_move> Fun: FnOnce(&INPUT::Item) -> bool,
+        for<'impl_mut> Fun: FnMut(&INPUT::Item) -> bool,
+        for<'impl_ref> Fun: Fn(&INPUT::Item) -> bool,
     {
         let mut peekable = input.peekable();
         let peek = peekable.peek()?;
@@ -332,9 +331,9 @@ mod impls {
     fn func<Fun, Out>(self: &Func<Fun, Out>) -> Out
     where
         Out: Response,
-        for<'once> Fun: FnOnce(&mut INPUT) -> Out,
-        for<'mut> Fun: FnMut(&mut INPUT) -> Out,
-        for<'const> Fun: Fn(&mut INPUT) -> Out,
+        for<'impl_move> Fun: FnOnce(&mut INPUT) -> Out,
+        for<'impl_mut> Fun: FnMut(&mut INPUT) -> Out,
+        for<'impl_ref> Fun: Fn(&mut INPUT) -> Out,
     {
         (self.0)(input)
     }
@@ -358,7 +357,7 @@ mod impls {
     #[parser_fn]
     fn supply<T>(self: &Supply<T>) -> Sure<T>
     where
-        for<'mut, 'const> T: Clone,
+        for<'impl_mut, 'impl_ref> T: Clone,
     {
         when! {
             move => Sure(self.0),

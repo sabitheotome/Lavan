@@ -30,7 +30,7 @@ use super::{
     },
 };
 
-#[cfg(feature = "unstable_repeat_api_2021_v1")]
+#[cfg(feature = "unstable-repeat-api-2021-v1")]
 use super::adapters::repeat::adapters::*;
 
 use crate::input::prelude::*;
@@ -140,7 +140,7 @@ pub trait ParseOnce<Input> {
     ///     any().map(char::is_uppercase).evaluate(input);
     /// assert_eq!(is_uppercase, Some(true));
     /// ```
-    #[stability::unstable(feature = "unstable_name")]
+    #[stability::unstable(feature = "name-tbd")]
     fn map<Val, Fun>(self, f: Fun) -> Map<Self, Fun>
     where
         Self: Sized,
@@ -168,7 +168,7 @@ pub trait ParseOnce<Input> {
     ///     .map_err(|| ExpectedSomethingError).evaluate(input);
     /// assert_eq!(result, Err(ExpectedSomethingError));
     /// ```
-    #[stability::unstable(feature = "unstable_name")]
+    #[stability::unstable(feature = "name-tbd")]
     fn map_err<Fun, Err>(self, f: Fun) -> MapErr<Self, Fun>
     where
         Self: Sized,
@@ -192,7 +192,7 @@ pub trait ParseOnce<Input> {
     ///     any().map(char::is_uppercase).evaluate(input);
     /// assert_eq!(is_uppercase, Some(true));
     /// ```
-    #[stability::unstable(feature = "unstable_name")]
+    #[stability::unstable(feature = "name-tbd")]
     fn sel<Fun>(self, f: Fun) -> Sel<Self, Fun>
     where
         Self: Sized,
@@ -220,7 +220,7 @@ pub trait ParseOnce<Input> {
     ///     .map_err(|| ExpectedSomethingError).evaluate(input);
     /// assert_eq!(result, Err(ExpectedSomethingError));
     /// ```
-    #[stability::unstable(feature = "unstable_name")]
+    #[stability::unstable(feature = "name-tbd")]
     fn sel_err<Fun>(self, f: Fun) -> SelErr<Self, Fun>
     where
         Self: Sized,
@@ -356,7 +356,7 @@ pub trait ParseOnce<Input> {
     }
 
     // TODO: Documentation
-    #[stability::unstable(feature = "unstable_name")]
+    #[stability::unstable(feature = "name-tbd")]
     fn lift(self) -> Lift<Self>
     where
         Self: Sized,
@@ -735,7 +735,7 @@ pub trait ParseOnce<Input> {
     }
 
     // TODO: Documentation
-    #[cfg(feature = "unstable_repeat_api_2021_v1")]
+    #[cfg(feature = "unstable-repeat-api-2021-v1")]
     fn repeat(self) -> Repeater<Self>
     where
         Self: Sized,
@@ -744,7 +744,7 @@ pub trait ParseOnce<Input> {
     }
 
     // TODO: Documentation
-    #[cfg(feature = "unstable_repeat_api_2021_v1")]
+    #[cfg(feature = "unstable-repeat-api-2021-v1")]
     fn repeat_eoi(self) -> RepeatEOI<Self>
     where
         Self: Sized,
@@ -753,7 +753,7 @@ pub trait ParseOnce<Input> {
     }
 
     // TODO: Documentation
-    #[cfg(feature = "unstable_repeat_api_2021_v1")]
+    #[cfg(feature = "unstable-repeat-api-2021-v1")]
     fn repeat_exact(self, count: usize) -> RepeatExact<Self>
     where
         Self: Sized,
@@ -763,7 +763,7 @@ pub trait ParseOnce<Input> {
     }
 
     // TODO: Documentation
-    #[cfg(feature = "unstable_repeat_api_2021_v1")]
+    #[cfg(feature = "unstable-repeat-api-2021-v1")]
     fn repeat_max(self, count: usize) -> RepeatMax<Self>
     where
         Self: Sized,
@@ -773,7 +773,7 @@ pub trait ParseOnce<Input> {
     }
 
     // TODO: Documentation
-    #[cfg(feature = "unstable_repeat_api_2021_v1")]
+    #[cfg(feature = "unstable-repeat-api-2021-v1")]
     fn repeat_min(self, count: usize) -> RepeatMin<Self>
     where
         Self: Sized,
@@ -783,7 +783,7 @@ pub trait ParseOnce<Input> {
     }
 
     // TODO: Documentation
-    #[cfg(feature = "unstable_repeat_api_2021_v1")]
+    #[cfg(feature = "unstable-repeat-api-2021-v1")]
     fn repeat_min_eoi(self, count: usize) -> RepeatMinEOI<Self>
     where
         Self: Sized,

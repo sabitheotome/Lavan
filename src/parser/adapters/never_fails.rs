@@ -4,7 +4,7 @@ use crate::parser::prelude::internal::*;
 ///
 /// This `struct` is created by the [`TODO`] method on [`TODO`].
 /// See its documentation for more.    
-#[stability::unstable(feature = "unstable_name")]
+#[stability::unstable(feature = "name-tbd")]
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 #[derive(Debug, Clone, Copy)]
 pub struct NeverFails<Par, Err>(pub(crate) Par, pub(crate) std::marker::PhantomData<Err>);
