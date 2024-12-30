@@ -105,7 +105,7 @@ pub mod macros {
 }
 
 pub mod types {
-    use super::super::{prelude::*, traits::Combine};
+    use super::super::{prelude::internal::*, traits::Combine};
 
     pub type Val<R> = <R as Response>::Value;
     pub type Err<R> = <R as Response>::Error;

@@ -8,13 +8,6 @@ macro_rules! or {
     }
 }
 
-#[macro_export]
-macro_rules! recursive {
-    ($ident:ident) => {
-        fn $ident()
-    }
-}
-
 pub mod parser {
     pub mod adapters {
         pub mod and;
@@ -27,14 +20,20 @@ pub mod parser {
         pub mod filter;
         pub mod lift;
         pub mod map;
-        pub mod never_fails;
+        pub mod marker;
+        pub(crate) mod never_fails;
         pub mod ok;
         pub mod opt;
         pub mod or;
         pub mod owned;
         pub mod parse_str;
         pub mod persist;
+
+        #[cfg(feature = "unstable-repeat-api-2021-v1")]
         pub mod repeat;
+        #[cfg(not(feature = "unstable-repeat-api-2021-v1"))]
+        pub(crate) mod repeat;
+
         pub mod slice;
         pub mod spanned;
         pub mod then;
@@ -69,6 +68,12 @@ pub mod input {
     pub mod traits;
 }
 pub mod util {
+    #[cfg(feature = "unstable-text-util-2021-v1")]
     pub mod text;
+    #[cfg(not(feature = "unstable-text-util-2021-v1"))]
+    pub(crate) mod text;
 }
+#[cfg(feature = "unstable-prelude-2021-v1")]
 pub mod prelude;
+#[cfg(not(feature = "unstable-prelude-2021-v1"))]
+pub(crate) mod prelude;

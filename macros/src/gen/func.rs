@@ -148,7 +148,7 @@ pub fn gen(attr: TokenStream, target: TokenStream) -> TokenStream {
                         impl #ig #parser_trait_path_mut for #self_ty #wc
                         {
                             #(#func_attrs)*
-                            fn parse_as_mut(&mut self, input: &mut #input_ty) -> #output {
+                            fn parse_mut(&mut self, input: &mut #input_ty) -> #output {
                                 #body
                             }
                         }
@@ -161,7 +161,7 @@ pub fn gen(attr: TokenStream, target: TokenStream) -> TokenStream {
                         impl #ig #parser_trait_path_const for #self_ty #wc
                         {
                             #(#func_attrs)*
-                            fn parse_as_ref(&self, input: &mut #input_ty) -> #output {
+                            fn parse(&self, input: &mut #input_ty) -> #output {
                                 #body
                             }
                         }
@@ -224,7 +224,7 @@ fn fun_name2(mutability: &str, mim_suffix: TokenStream2) -> TokenStream2 {
             macro_rules! when {
                 (move => $expr:expr, $($tt:tt)*) => { $expr };
                 (mut => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
-                (const => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
+                (ref => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
                 (_ => $expr:expr $(,)?) => { $expr };
             }
         },
@@ -233,12 +233,12 @@ fn fun_name2(mutability: &str, mim_suffix: TokenStream2) -> TokenStream2 {
                 ($(use $t:tt =>)? $expr:expr) => [$expr.as_mut()];
             }
             macro_rules! parse {
-                ($(use $t:tt =>)? $e:expr) => [$e.parse_as_mut(input)];
+                ($(use $t:tt =>)? $e:expr) => [$e.parse_mut(input)];
             }
             macro_rules! when {
                 (move => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
                 (mut => $expr:expr, $($tt:tt)*) => { $expr };
-                (const => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
+                (ref => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
                 (_ => $expr:expr $(,)?) => { $expr };
             }
         },
@@ -247,12 +247,12 @@ fn fun_name2(mutability: &str, mim_suffix: TokenStream2) -> TokenStream2 {
                 ($(use $t:tt =>)? $expr:expr) => [$expr.as_ref()];
             }
             macro_rules! parse {
-                ($(use $t:tt =>)? $e:expr) => [$e.parse_as_ref(input)];
+                ($(use $t:tt =>)? $e:expr) => [$e.parse(input)];
             }
             macro_rules! when {
                 (move => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
                 (mut => $expr:expr, $($tt:tt)*) => { when!($($tt)*) };
-                (const => $expr:expr, $($tt:tt)*) => { $expr };
+                (ref => $expr:expr, $($tt:tt)*) => { $expr };
                 (_ => $expr:expr $(,)?) => { $expr };
             }
         },
@@ -347,9 +347,14 @@ fn is_pred_allowed(pr: &mut syn::PredicateType, mutability: &str) -> bool {
                 break 'blk true;
             };
 
-            let lf = param.lifetime.ident.to_string();
+            let lf = match param.lifetime.ident.to_string().as_ref() {
+                "impl_move" => "once",
+                "impl_mut" => "mut",
+                "impl_ref" => "const",
+                _ => "",
+            };
 
-            match (lf.as_str(), lf == mutability) {
+            match (lf, lf == mutability) {
                 ("once" | "mut" | "const", b) => {
                     if b {
                         found_eq = true;

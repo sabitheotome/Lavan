@@ -1,5 +1,4 @@
-use super::{super::input::prelude::*, super::response::prelude::*, prelude::*};
-use std::marker::PhantomData;
+use super::prelude::internal::*;
 
 pub use functions::*;
 
@@ -36,7 +35,7 @@ pub mod functions {
     // TODO: Documentation
     pub fn any_then<Fun, I: Stream>(f: Fun) -> Src<AnyThen<Fun>, I>
     where
-        AnyThen<Fun>: IterativeParser<I>,
+        AnyThen<Fun>: ParseOnce<I>,
     {
         src(AnyThen(f))
     }
@@ -78,7 +77,7 @@ pub mod functions {
     // TODO: Documentation
     pub fn mk<T, I: Stream>() -> Src<Mk<T>, I>
     where
-        T: Parse<I>,
+        T: FromParse<I>,
     {
         src(Mk(PhantomData))
     }
@@ -100,14 +99,13 @@ pub mod functions {
     pub fn recursive<'a, Out, Par, Fun, I>(f: Fun) -> Src<Recursive<Par>, I>
     where
         I: Stream,
-        Par: 'a + IterativeParserRef<I, Output = Out>,
-        Fun: Fn(Weak<dyn 'a + IterativeParserRef<I, Output = Out>>) -> Par,
+        Par: 'a + Parse<I, Output = Out>,
+        Fun: Fn(Weak<dyn 'a + Parse<I, Output = Out>>) -> Par,
     {
         src(Recursive {
             parser: std::rc::Rc::new_cyclic(|weak| {
                 f(Weak {
-                    parser: weak.clone()
-                        as std::rc::Weak<dyn IterativeParserRef<I, Output = Par::Output>>,
+                    parser: weak.clone() as std::rc::Weak<dyn Parse<I, Output = Par::Output>>,
                 })
             }),
         })
@@ -134,7 +132,7 @@ pub mod adapters {
     #[parser_fn]
     fn infer<par>(self: &Src<par, INPUT>) -> par::Output
     where
-        par: IterativeParser<INPUT>,
+        par: ParseOnce<INPUT>,
     {
         parse![self.0]
     }
@@ -249,7 +247,7 @@ pub mod adapters {
     /// TODO
     ///
     /// This `struct` is created by the [`TODO`] method on [`TODO`](crate::TODO).
-    /// See its documentation for more.
+    /// See its documentation for more
     #[must_use = "Parsers are lazy and do nothing unless consumed"]
     #[derive(Debug, Clone)]
     pub struct Recursive<Par: ?Sized> {
@@ -286,9 +284,9 @@ mod impls {
     #[parser_fn]
     fn any_if<Fun>(self: &AnyIf<Fun>) -> Option<INPUT::Item>
     where
-        for<'once> Fun: FnOnce(&INPUT::Item) -> bool,
-        for<'mut> Fun: FnMut(&INPUT::Item) -> bool,
-        for<'const> Fun: Fn(&INPUT::Item) -> bool,
+        for<'impl_move> Fun: FnOnce(&INPUT::Item) -> bool,
+        for<'impl_mut> Fun: FnMut(&INPUT::Item) -> bool,
+        for<'impl_ref> Fun: Fn(&INPUT::Item) -> bool,
     {
         let mut peekable = input.peekable();
         let peek = peekable.peek()?;
@@ -333,9 +331,9 @@ mod impls {
     fn func<Fun, Out>(self: &Func<Fun, Out>) -> Out
     where
         Out: Response,
-        for<'once> Fun: FnOnce(&mut INPUT) -> Out,
-        for<'mut> Fun: FnMut(&mut INPUT) -> Out,
-        for<'const> Fun: Fn(&mut INPUT) -> Out,
+        for<'impl_move> Fun: FnOnce(&mut INPUT) -> Out,
+        for<'impl_mut> Fun: FnMut(&mut INPUT) -> Out,
+        for<'impl_ref> Fun: Fn(&mut INPUT) -> Out,
     {
         (self.0)(input)
     }
@@ -343,7 +341,7 @@ mod impls {
     #[parser_fn]
     fn mk<T>(self: &Mk<T>) -> T::Output
     where
-        T: Parse<INPUT>,
+        T: FromParse<INPUT>,
     {
         T::parse(input)
     }
@@ -359,7 +357,7 @@ mod impls {
     #[parser_fn]
     fn supply<T>(self: &Supply<T>) -> Sure<T>
     where
-        for<'mut, 'const> T: Clone,
+        for<'impl_mut, 'impl_ref> T: Clone,
     {
         when! {
             move => Sure(self.0),
@@ -370,16 +368,16 @@ mod impls {
     #[parser_fn]
     fn recursive<Par>(self: &Recursive<Par>) -> Par::Output
     where
-        Par: ?Sized + IterativeParserRef<INPUT>,
+        Par: ?Sized + Parse<INPUT>,
     {
-        self.parser.parse_as_ref(input)
+        self.parser.parse(input)
     }
 
     #[parser_fn]
     fn weak<Par>(self: &Weak<Par>) -> Par::Output
     where
-        Par: ?Sized + IterativeParserRef<INPUT>,
+        Par: ?Sized + Parse<INPUT>,
     {
-        self.parser.upgrade().unwrap().parse_as_ref(input)
+        self.parser.upgrade().unwrap().parse(input)
     }
 }

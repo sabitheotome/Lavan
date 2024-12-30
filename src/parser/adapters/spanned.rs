@@ -1,6 +1,4 @@
-use crate::input::prelude::*;
-use crate::parser::prelude::*;
-use crate::response::prelude::*;
+use crate::parser::prelude::internal::*;
 
 /// A parser for attaching the span of offsets to the reponse
 ///

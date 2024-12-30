@@ -1,4 +1,4 @@
-use crate::prelude::{IntoStream, Stream, StreamSlice, StreamSpan};
+use crate::input::prelude::internal::*;
 
 #[derive(Debug, Clone)]
 #[non_exhaustive]

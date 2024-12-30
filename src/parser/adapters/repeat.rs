@@ -1,10 +1,10 @@
-use crate::input::prelude::*;
-use crate::parser::{prelude::*, sources::adapters::*, sources::*};
-use crate::response::prelude::*;
+use crate::parser::{
+    prelude::internal::*,
+    sources::{adapters::*, *},
+};
+
 use adapters::*;
 use mode::*;
-use std::marker::PhantomData;
-use std::ops::ControlFlow::{self, *};
 
 /// A parser for repeatition and collection
 ///

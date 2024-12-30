@@ -1,6 +1,4 @@
-use crate::input::prelude::*;
-use crate::parser::prelude::*;
-use crate::response::prelude::*;
+use crate::parser::prelude::internal::*;
 
 /// A parser for checking equallity with a value
 ///
@@ -82,7 +80,7 @@ pub struct OrElse<Res, Err>(Res, std::marker::PhantomData<Err>);
 impl<Par, Val, const I: bool> Eq<Par, Val, (), I> {
     pub(crate) fn new<Input>(parser: Par, value: Val) -> Self
     where
-        Par: IterativeParser<Input>,
+        Par: ParseOnce<Input>,
         Par::Output: ValueResponse,
         <Par::Output as Response>::Value: PartialEq<Val>,
     {

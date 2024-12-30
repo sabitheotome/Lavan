@@ -1,6 +1,4 @@
-use crate::input::prelude::*;
-use crate::parser::prelude::*;
-use crate::response::prelude::*;
+use crate::parser::prelude::internal::*;
 
 // TODO: Documentation
 pub type SelFn<Par, Val0, Val1> = Sel<Par, fn(Val0) -> Val1>;
@@ -12,6 +10,7 @@ pub type SelErrFn<Par, Val0, Val1> = SelErr<Par, fn(Val0) -> Val1>;
 ///
 /// This `struct` is created by the [`Parser::map`] method on [`Parser`].
 /// See its documentation for more.
+#[stability::unstable(feature = "name-tbd")]
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 #[derive(Debug, Clone, Copy)]
 pub struct Map<Par, Fun> {
@@ -23,6 +22,7 @@ pub struct Map<Par, Fun> {
 ///
 /// This `struct` is created by the [`Parser::map`] method on [`Parser`].
 /// See its documentation for more.
+#[stability::unstable(feature = "name-tbd")]
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 #[derive(Debug, Clone, Copy)]
 pub struct MapErr<Par, Fun> {
@@ -34,6 +34,7 @@ pub struct MapErr<Par, Fun> {
 ///
 /// This `struct` is created by the [`Parser::map`] method on [`Parser`].
 /// See its documentation for more.
+#[stability::unstable(feature = "name-tbd")]
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 #[derive(Debug, Clone, Copy)]
 pub struct Sel<Par, Fun> {
@@ -45,6 +46,7 @@ pub struct Sel<Par, Fun> {
 ///
 /// This `struct` is created by the [`Parser::map_err`] method on [`Parser`].
 /// See its documentation for more.
+#[stability::unstable(feature = "name-tbd")]
 #[must_use = "Parsers are lazy and do nothing unless consumed"]
 #[derive(Debug, Clone, Copy)]
 pub struct SelErr<Par, Fun> {
@@ -55,28 +57,28 @@ pub struct SelErr<Par, Fun> {
 #[parser_fn]
 fn map<par, Fun, Val>(self: &Map<par, Fun>) -> val![par<Val>]
 where
-    for<'once> Fun: FnOnce(val![par]) -> Val,
-    for<'mut> Fun: FnMut(val![par]) -> Val,
-    for<'const> Fun: Fn(val![par]) -> Val,
+    for<'impl_move> Fun: FnOnce(val![par]) -> Val,
+    for<'impl_mut> Fun: FnMut(val![par]) -> Val,
+    for<'impl_ref> Fun: Fn(val![par]) -> Val,
 {
     parse![self.parser].map(when! {
         move => self.function,
         mut => &mut self.function,
-        const => &self.function,
+        ref => &self.function,
     })
 }
 
 #[parser_fn]
 fn map_err<par, Fun, Err>(self: &MapErr<par, Fun>) -> err![par<Err>]
 where
-    for<'once> Fun: FnOnce(err![par]) -> Err,
-    for<'mut> Fun: FnMut(err![par]) -> Err,
-    for<'const> Fun: Fn(err![par]) -> Err,
+    for<'impl_move> Fun: FnOnce(err![par]) -> Err,
+    for<'impl_mut> Fun: FnMut(err![par]) -> Err,
+    for<'impl_ref> Fun: Fn(err![par]) -> Err,
 {
     parse![self.parser].map_err(when! {
         move => self.function,
         mut => &mut self.function,
-        const => &self.function,
+        ref => &self.function,
     })
 }
 

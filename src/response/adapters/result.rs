@@ -1,4 +1,4 @@
-use crate::response::prelude::*;
+use crate::response::prelude::internal::*;
 
 impl<T, E> Response for Result<T, E> {
     type Value = T;

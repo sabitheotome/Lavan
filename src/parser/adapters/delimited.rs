@@ -1,11 +1,5 @@
-use std::marker::PhantomData;
-
-use crate::input::prelude::*;
-use crate::parser::prelude::*;
-use crate::parser::sources::any_eq;
-use crate::response::prelude::*;
-
-use super::del::Del;
+use super::{super::sources::any_eq, del::Del};
+use crate::parser::prelude::internal::*;
 
 /// A util parser for expecting opening and closing delimiters around
 ///
@@ -35,8 +29,8 @@ where
 impl<Par, Del0, Del1> Delimited<Par, Del0, Del1> {
     pub fn del_delims<Input>(self) -> Delimited<Par, Del<Del0>, Del<Del1>>
     where
-        Del0: IterativeParser<Input, Output: ValueResponse>,
-        Del1: IterativeParser<Input, Output: ValueResponse>,
+        Del0: ParseOnce<Input, Output: ValueResponse>,
+        Del1: ParseOnce<Input, Output: ValueResponse>,
     {
         Delimited {
             parser: self.parser,
